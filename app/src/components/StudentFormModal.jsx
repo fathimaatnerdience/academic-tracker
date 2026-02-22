@@ -1,0 +1,332 @@
+import { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { studentsAPI } from '../services/api';
+
+const StudentFormModal = ({ isOpen, onClose, onSuccess, student = null }) => {
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    // User data
+    name: '',
+    email: '',
+    password: '',
+    phone: '',
+    address: '',
+    // Student specific data
+    gradeLevel: '',
+    section: '',
+    dateOfBirth: '',
+    gender: '',
+    bloodGroup: '',
+    admissionDate: '',
+  });
+
+  // Reset form when modal opens for new student
+  useEffect(() => {
+    if (isOpen) {
+      if (!student) {
+        // New student - reset to empty values
+        setFormData({
+          name: '',
+          email: '',
+          password: '',
+          phone: '',
+          address: '',
+          gradeLevel: '',
+          section: '',
+          dateOfBirth: '',
+          gender: '',
+          bloodGroup: '',
+          admissionDate: '',
+        });
+      } else {
+        // Editing existing student - populate form
+        setFormData({
+          name: student.user?.name || '',
+          email: student.user?.email || '',
+          phone: student.user?.phone || '',
+          address: student.user?.address || '',
+          gradeLevel: student.gradeLevel || '',
+          section: student.section || '',
+          dateOfBirth: student.dateOfBirth || '',
+          gender: student.gender || '',
+          bloodGroup: student.bloodGroup || '',
+          admissionDate: student.admissionDate || '',
+          password: '', // Don't populate password when editing
+        });
+      }
+    }
+  }, [isOpen, student]);
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const payload = {
+        userData: {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          ...(formData.password && { password: formData.password }),
+        },
+        studentData: {
+          gradeLevel: parseInt(formData.gradeLevel) || 1,
+          section: formData.section || 'A',
+          dateOfBirth: formData.dateOfBirth,
+          gender: formData.gender,
+          bloodGroup: formData.bloodGroup,
+          admissionDate: formData.admissionDate,
+        }
+      };
+
+      if (student) {
+        await studentsAPI.update(student.id, payload);
+        toast.success('Student updated successfully!');
+      } else {
+        await studentsAPI.create(payload);
+        toast.success('Student created successfully!');
+      }
+
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error('Error saving student:', error);
+      toast.error(error.message || 'Failed to save student');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-2xl font-bold text-gray-900">
+            {student ? 'Edit Student' : 'Add New Student'}
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          
+          {/* Personal Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Full Name *
+              </label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Email *
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            {!student && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Password *
+                </label>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required={!student}
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Phone
+              </label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Date of Birth *
+              </label>
+              <input
+                type="date"
+                name="dateOfBirth"
+                value={formData.dateOfBirth}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Gender *
+              </label>
+              <select
+                name="gender"
+                value={formData.gender}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Select Gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Grade Level *
+              </label>
+              <select
+                name="gradeLevel"
+                value={formData.gradeLevel}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Select Grade</option>
+                {[...Array(12)].map((_, i) => (
+                  <option key={i + 1} value={i + 1}>
+                    Grade {i + 1}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Section *
+              </label>
+              <input
+                type="text"
+                name="section"
+                value={formData.section}
+                onChange={handleChange}
+                maxLength="10"
+                required
+                placeholder="e.g., A, B, C"
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Blood Group
+              </label>
+              <select
+                name="bloodGroup"
+                value={formData.bloodGroup}
+                onChange={handleChange}
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Select Blood Group</option>
+                <option value="A+">A+</option>
+                <option value="A-">A-</option>
+                <option value="B+">B+</option>
+                <option value="B-">B-</option>
+                <option value="O+">O+</option>
+                <option value="O-">O-</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB-</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Admission Date *
+              </label>
+              <input
+                type="date"
+                name="admissionDate"
+                value={formData.admissionDate}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Address
+            </label>
+            <textarea
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              rows="3"
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Buttons */}
+          <div className="flex gap-3 justify-end pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+            >
+              {loading ? 'Saving...' : student ? 'Update' : 'Create'}
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  );
+};
+
+export default StudentFormModal;
