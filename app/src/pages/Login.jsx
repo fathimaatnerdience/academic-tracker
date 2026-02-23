@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { authAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -8,6 +10,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const { setUser } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,25 +22,24 @@ const Login = () => {
 
     setLoading(true);
 
-    const mockUsers = {
-      'admin@school.com':   { role: 'admin',   name: 'Admin User' },
-      'teacher@school.com': { role: 'teacher', name: 'Teacher User' },
-      'student@school.com': { role: 'student', name: 'Student User' },
-      'parent@school.com':  { role: 'parent',  name: 'Parent User' },
-    };
-
-    setTimeout(() => {
-      const user = mockUsers[email];
-      if (user && password === 'password123') {
-        localStorage.setItem('token', 'mock-token-12345');
-        localStorage.setItem('user', JSON.stringify({ ...user, email }));
+    try {
+      const response = await authAPI.login({ email, password });
+      
+      if (response.success) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        setUser(response.data.user);
         toast.success('Login successful!');
         navigate('/dashboard');
       } else {
-        toast.error('Invalid credentials. Use demo credentials below.');
+        toast.error(response.message || 'Login failed');
       }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error(error.message || 'Invalid credentials');
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   return (
