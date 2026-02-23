@@ -135,9 +135,34 @@ export const createStudent = async (req, res, next) => {
       role: 'student'
     });
 
+    // If classId is provided, get gradeLevel and section from Class
+    let finalStudentData = { ...studentData };
+    
+    if (finalStudentData.classId) {
+      try {
+        const classRecord = await Class.findByPk(finalStudentData.classId);
+        if (classRecord) {
+          finalStudentData.gradeLevel = classRecord.gradeLevel;
+          finalStudentData.section = classRecord.section;
+        }
+      } catch (err) {
+        console.error('Error fetching class for gradeLevel and section:', err);
+      }
+    }
+
+    // If no classId and no gradeLevel provided, set gradeLevel to null
+    if (!finalStudentData.gradeLevel && !finalStudentData.classId) {
+      finalStudentData.gradeLevel = null;
+    }
+
+    // If no classId, set section to null
+    if (!finalStudentData.classId) {
+      finalStudentData.section = null;
+    }
+
     // Create student
     const student = await Student.create({
-      ...studentData,
+      ...finalStudentData,
       userId: user.id,
       studentId: `STU${Date.now()}`
     });
@@ -189,9 +214,27 @@ export const updateStudent = async (req, res, next) => {
       await user.update(userData);
     }
 
-    // Update student data
+    // Update student data - if classId is changed, also update gradeLevel and section
     if (studentData) {
-      await student.update(studentData);
+      let finalStudentData = { ...studentData };
+      
+      if (finalStudentData.classId) {
+        try {
+          const classRecord = await Class.findByPk(finalStudentData.classId);
+          if (classRecord) {
+            finalStudentData.gradeLevel = classRecord.gradeLevel;
+            finalStudentData.section = classRecord.section;
+          }
+        } catch (err) {
+          console.error('Error fetching class for gradeLevel and section:', err);
+        }
+      } else {
+        // If no classId provided, set gradeLevel and section to null
+        finalStudentData.gradeLevel = null;
+        finalStudentData.section = null;
+      }
+      
+      await student.update(finalStudentData);
     }
 
     // Fetch updated student

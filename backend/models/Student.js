@@ -32,7 +32,7 @@ const Student = sequelize.define('Student', {
   },
   gradeLevel: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     validate: {
       min: 1,
       max: 12
@@ -68,12 +68,12 @@ const Student = sequelize.define('Student', {
     },
     onDelete: 'SET NULL'
   },
-  emergencyContact: {
+  contact: {
     type: DataTypes.STRING(20),
     allowNull: true
   },
-  medicalInfo: {
-    type: DataTypes.TEXT,
+  phone: {
+    type: DataTypes.STRING(20),
     allowNull: true
   }
 }, {

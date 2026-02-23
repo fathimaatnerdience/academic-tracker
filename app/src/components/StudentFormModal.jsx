@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { studentsAPI } from '../services/api';
+import { studentsAPI, classesAPI } from '../services/api';
 
 const StudentFormModal = ({ isOpen, onClose, onSuccess, student = null }) => {
   const [loading, setLoading] = useState(false);
+  const [classes, setClasses] = useState([]);
+  const [loadingClasses, setLoadingClasses] = useState(false);
   const [formData, setFormData] = useState({
     // User data
     name: '',
@@ -13,13 +15,33 @@ const StudentFormModal = ({ isOpen, onClose, onSuccess, student = null }) => {
     phone: '',
     address: '',
     // Student specific data
-    gradeLevel: '',
-    section: '',
+    classId: '',
     dateOfBirth: '',
     gender: '',
     bloodGroup: '',
     admissionDate: '',
+    contact: '',
   });
+
+  // Fetch classes when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchClasses();
+    }
+  }, [isOpen]);
+
+  // Fetch classes from API
+  const fetchClasses = async () => {
+    try {
+      setLoadingClasses(true);
+      const response = await classesAPI.getAll();
+      setClasses(response.data || response);
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+    } finally {
+      setLoadingClasses(false);
+    }
+  };
 
   // Reset form when modal opens for new student
   useEffect(() => {
@@ -32,26 +54,26 @@ const StudentFormModal = ({ isOpen, onClose, onSuccess, student = null }) => {
           password: '',
           phone: '',
           address: '',
-          gradeLevel: '',
-          section: '',
+          classId: '',
           dateOfBirth: '',
           gender: '',
           bloodGroup: '',
           admissionDate: '',
+          contact: '',
         });
       } else {
         // Editing existing student - populate form
         setFormData({
           name: student.user?.name || '',
           email: student.user?.email || '',
-          phone: student.user?.phone || '',
+          phone: student.phone || '',
           address: student.user?.address || '',
-          gradeLevel: student.gradeLevel || '',
-          section: student.section || '',
+          classId: student.classId || '',
           dateOfBirth: student.dateOfBirth || '',
           gender: student.gender || '',
           bloodGroup: student.bloodGroup || '',
           admissionDate: student.admissionDate || '',
+          contact: student.contact || '',
           password: '', // Don't populate password when editing
         });
       }
@@ -74,17 +96,17 @@ const StudentFormModal = ({ isOpen, onClose, onSuccess, student = null }) => {
         userData: {
           name: formData.name,
           email: formData.email,
-          phone: formData.phone,
           address: formData.address,
           ...(formData.password && { password: formData.password }),
         },
         studentData: {
-          gradeLevel: parseInt(formData.gradeLevel) || 1,
-          section: formData.section || 'A',
+          classId: formData.classId || null,
           dateOfBirth: formData.dateOfBirth,
           gender: formData.gender,
           bloodGroup: formData.bloodGroup,
           admissionDate: formData.admissionDate,
+          contact: formData.contact,
+          phone: formData.phone,
         }
       };
 
@@ -221,38 +243,23 @@ const StudentFormModal = ({ isOpen, onClose, onSuccess, student = null }) => {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Grade Level *
+                Class *
               </label>
               <select
-                name="gradeLevel"
-                value={formData.gradeLevel}
+                name="classId"
+                value={formData.classId}
                 onChange={handleChange}
                 required
+                disabled={loadingClasses}
                 className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="">Select Grade</option>
-                {[...Array(12)].map((_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    Grade {i + 1}
+                <option value="">Select Class</option>
+                {classes.map((cls) => (
+                  <option key={cls.id} value={cls.id}>
+                    {cls.name} (Grade {cls.gradeLevel}-{cls.section})
                   </option>
                 ))}
               </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Section *
-              </label>
-              <input
-                type="text"
-                name="section"
-                value={formData.section}
-                onChange={handleChange}
-                maxLength="10"
-                required
-                placeholder="e.g., A, B, C"
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
             </div>
 
             <div>
@@ -287,6 +294,19 @@ const StudentFormModal = ({ isOpen, onClose, onSuccess, student = null }) => {
                 value={formData.admissionDate}
                 onChange={handleChange}
                 required
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Contact (Emergency)
+              </label>
+              <input
+                type="tel"
+                name="contact"
+                value={formData.contact}
+                onChange={handleChange}
                 className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>

@@ -21,15 +21,18 @@ const ClassList = () => {
   const fetchClasses = async () => {
     try {
       setLoading(true);
+      console.log('Fetching classes with params:', { page: currentPage, limit: 10, search: searchTerm });
       const response = await classesAPI.getAll({
         page: currentPage,
         limit: 10,
         search: searchTerm
       });
+      console.log('API Response:', response);
       setClasses(response.data);
       setTotalPages(response.totalPages);
     } catch (error) {
       toast.error('Failed to fetch classes');
+      console.error('Error fetching classes:', error);
     } finally {
       setLoading(false);
     }

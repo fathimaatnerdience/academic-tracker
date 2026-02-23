@@ -9,7 +9,6 @@ import { sequelize } from './config/database.js';
 // ✅ CRITICAL: Import models index to initialize all models and associations
 import * as models from './models/index.js';
 
-
 import authRoutes from './routes/authRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
 import teacherRoutes from './routes/teacherRoutes.js';
@@ -110,8 +109,8 @@ const startServer = async () => {
     await sequelize.authenticate();
     console.log('✅ Database connection established successfully');
 
-    // Sync ALL models with database - enabled alter to update column names
-    await sequelize.sync({ alter: false, force: false });
+    // Sync ALL models with database (alter: true to add new columns)
+    await sequelize.sync({ alter: true, force: false });
     console.log('✅ Database models synchronized');
     
     // Log all created tables
