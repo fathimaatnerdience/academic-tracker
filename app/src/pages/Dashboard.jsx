@@ -8,6 +8,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import { Users, BookOpen, Calendar as CalendarIcon, GraduationCap, TrendingUp } from 'lucide-react';
+import AIChatbot from '../components/AIChatbot';
 
 const localizer = momentLocalizer(moment);
 
@@ -293,6 +294,8 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      <AIChatbot />
 
     </div>
   );
