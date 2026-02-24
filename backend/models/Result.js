@@ -18,21 +18,11 @@ const Result = sequelize.define('Result', {
   },
   examId: {
     type: DataTypes.UUID,
-    allowNull: true,
-    references: {
-      model: 'exams',
-      key: 'id'
-    },
-    onDelete: 'CASCADE'
+    allowNull: true
   },
   assignmentId: {
     type: DataTypes.UUID,
-    allowNull: true,
-    references: {
-      model: 'assignments',
-      key: 'id'
-    },
-    onDelete: 'CASCADE'
+    allowNull: true
   },
   marksObtained: {
     type: DataTypes.DECIMAL(5, 2),

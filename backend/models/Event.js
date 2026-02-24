@@ -41,15 +41,6 @@ const Event = sequelize.define('Event', {
     },
     onDelete: 'SET NULL',
     comment: 'Null means event is for all classes'
-  },
-  organizerId: {
-    type: DataTypes.UUID,
-    allowNull: true,
-    references: {
-      model: 'users',
-      key: 'id'
-    },
-    onDelete: 'SET NULL'
   }
 }, {
   tableName: 'events',

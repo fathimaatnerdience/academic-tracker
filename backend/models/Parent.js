@@ -18,22 +18,26 @@ const Parent = sequelize.define('Parent', {
   },
   parentId: {
     type: DataTypes.STRING(20),
-    allowNull: false,
-    unique: true
+    allowNull: true
   },
   occupation: {
     type: DataTypes.STRING(100),
     allowNull: true
   },
   relationship: {
-    type: DataTypes.ENUM('father', 'mother', 'guardian'),
-    allowNull: false
+    type: DataTypes.ENUM('father', 'mother', 'guardian', 'other'),
+    allowNull: false,
+    defaultValue: 'father'
   },
   workPhone: {
     type: DataTypes.STRING(20),
     allowNull: true
   },
   workAddress: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  address: {
     type: DataTypes.TEXT,
     allowNull: true
   }

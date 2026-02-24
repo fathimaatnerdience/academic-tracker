@@ -1,8 +1,23 @@
 import express from 'express';
-import { protect } from '../middleware/auth.js';
+import { protect, authorize } from '../middleware/auth.js';
+import {
+  getLessons,
+  getLesson,
+  createLesson,
+  updateLesson,
+  deleteLesson
+} from '../controllers/lessonController.js';
+
 const router = express.Router();
 router.use(protect);
-router.get('/', async (req, res) => {
-  res.status(200).json({ success: true, data: [] });
-});
+
+router.route('/')
+  .get(getLessons)
+  .post(authorize('admin'), createLesson);
+
+router.route('/:id')
+  .get(getLesson)
+  .put(authorize('admin'), updateLesson)
+  .delete(authorize('admin'), deleteLesson);
+
 export default router;

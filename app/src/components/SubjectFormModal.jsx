@@ -39,8 +39,12 @@ const SubjectFormModal = ({ isOpen, onClose, onSuccess, subject = null }) => {
         await subjectsAPI.create(formData);
         toast.success('Subject created!');
       }
-      onSuccess();
+      // Close modal first, then refresh list
       onClose();
+      // Small delay to ensure modal state is updated before fetching
+      setTimeout(() => {
+        onSuccess();
+      }, 100);
     } catch (error) {
       toast.error(error.message || 'Failed to save subject');
     } finally {
