@@ -22,9 +22,21 @@ import resultRoutes from './routes/resultRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import eventRoutes from './routes/eventRoutes.js';
 import announcementRoutes from './routes/announcementRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
 
 // Load environment variables
 dotenv.config();
+
+if (!process.env.JWT_SECRET) {
+  if (process.env.NODE_ENV === 'development') {
+    process.env.JWT_SECRET = 'dev_jwt_secret_change_me';
+    console.warn('⚠️ JWT_SECRET is missing. Using an insecure development fallback secret.');
+    console.warn('⚠️ Add JWT_SECRET to backend/.env (see backend/.env.example) to keep tokens stable across restarts.');
+  } else {
+    console.error('❌ Missing JWT_SECRET in environment. Add it to backend/.env (see backend/.env.example).');
+    process.exit(1);
+  }
+}
 
 // Initialize Express app
 const app = express();
@@ -92,6 +104,7 @@ app.use('/api/results', resultRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/announcements', announcementRoutes);
+app.use('/api/ai', aiRoutes);
 
 // 404 Handler
 app.use((req, res) => {
@@ -119,6 +132,7 @@ const startServer = async () => {
     await sequelize.authenticate();
     console.log('✅ Database connection established successfully');
 
+     feature/updation
     // Sync ALL models with database (alter: true to add new columns)
     await sequelize.sync({ alter: false, force: false });
     
@@ -127,6 +141,9 @@ const startServer = async () => {
     await Result.sync({ force: true });
     console.log('✅ Results table recreated');
     
+    // Sync ALL models with database (without alter to prevent index accumulation)
+    await sequelize.sync();
+     develop
     console.log('✅ Database models synchronized');
     
     // Log all created tables

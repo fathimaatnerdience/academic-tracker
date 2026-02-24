@@ -237,5 +237,26 @@ export const dashboardAPI = {
   getRecentActivity: (limit = 10) => api.get('/dashboard/recent-activity', { params: { limit } })
 };
 
+// ========================================
+// AI Chatbot API
+// ========================================
+
+export const aiAPI = {
+  // Send a chat message to the AI
+  chat: (message) => api.post('/ai/chat', { message }),
+  
+  // Generate improvement plan for a specific student
+  getStudentImprovementPlan: (studentId) => api.post(`/ai/student-improvement/${studentId}`),
+  
+  // Generate analysis for a specific class
+  getClassAnalysis: (classId) => api.post(`/ai/class-analysis/${classId}`),
+  
+  // Clear conversation history
+  clearHistory: () => api.delete('/ai/clear-history'),
+  
+  // Check AI service health
+  healthCheck: () => api.get('/ai/health')
+};
+
 // Export default api instance for custom requests
 export default api;
