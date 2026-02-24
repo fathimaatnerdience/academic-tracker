@@ -38,7 +38,7 @@ Teacher.hasMany(Assignment, { foreignKey: 'teacherId', as: 'assignments' });
 
 // Parent associations
 Parent.belongsTo(User, { foreignKey: 'userId', as: 'user', indexes: false });
-Parent.hasMany(Student, { foreignKey: 'parentId', as: 'children' });
+Parent.hasMany(Student, { foreignKey: 'parentId', as: 'students' });
 
 // Class associations
 Class.belongsTo(Teacher, { foreignKey: 'supervisorId', as: 'supervisor' });
@@ -72,7 +72,7 @@ Assignment.belongsTo(Class, { foreignKey: 'classId', as: 'class' });
 Assignment.belongsTo(Teacher, { foreignKey: 'teacherId', as: 'teacher' });
 Assignment.hasMany(Result, { foreignKey: 'assignmentId', as: 'results' });
 
-// Result associations
+// Result associations - studentId is now UUID referencing Student's id
 Result.belongsTo(Student, { foreignKey: 'studentId', as: 'student' });
 Result.belongsTo(Exam, { foreignKey: 'examId', as: 'exam' });
 Result.belongsTo(Assignment, { foreignKey: 'assignmentId', as: 'assignment' });

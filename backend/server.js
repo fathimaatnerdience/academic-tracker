@@ -44,7 +44,17 @@ app.use('/api', limiter);
 // CORS Configuration
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Handle preflight requests explicitly
+app.options('*', cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Body Parser Middleware
@@ -110,7 +120,13 @@ const startServer = async () => {
     console.log('✅ Database connection established successfully');
 
     // Sync ALL models with database (alter: true to add new columns)
-    await sequelize.sync({ alter: true, force: false });
+    await sequelize.sync({ alter: false, force: false });
+    
+    // Force sync only the Result model to drop and recreate it
+    const Result = (await import('./models/index.js')).Result;
+    await Result.sync({ force: true });
+    console.log('✅ Results table recreated');
+    
     console.log('✅ Database models synchronized');
     
     // Log all created tables

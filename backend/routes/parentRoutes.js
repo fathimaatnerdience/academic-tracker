@@ -1,13 +1,27 @@
 import express from 'express';
 import { protect, authorize } from '../middleware/auth.js';
+import {
+  getParents,
+  getParent,
+  createParent,
+  updateParent,
+  deleteParent
+} from '../controllers/parentController.js';
 
 const router = express.Router();
 
+// All routes require authentication
 router.use(protect);
 
-// Add parent-specific routes here
-router.get('/', authorize('admin', 'teacher'), async (req, res) => {
-  res.status(200).json({ success: true, data: [] });
-});
+// Routes
+router.route('/')
+  .get(authorize('admin', 'teacher'), getParents)
+  .post(authorize('admin'), createParent);
+
+router.route('/:id')
+  .get(getParent)
+  .put(authorize('admin'), updateParent)
+  .delete(authorize('admin'), deleteParent);
 
 export default router;
+

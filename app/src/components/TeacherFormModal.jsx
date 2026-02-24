@@ -5,6 +5,7 @@ import { teachersAPI } from '../services/api';
 
 const TeacherFormModal = ({ isOpen, onClose, onSuccess, teacher = null }) => {
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     // User data
     name: '',
@@ -108,8 +109,12 @@ const TeacherFormModal = ({ isOpen, onClose, onSuccess, teacher = null }) => {
         toast.success('Teacher created successfully!');
       }
 
-      onSuccess();
+      // Close modal first, then refresh list
       onClose();
+      // Small delay to ensure modal state is updated before fetching
+      setTimeout(() => {
+        onSuccess();
+      }, 100);
     } catch (error) {
       console.error('Error saving teacher:', error);
       toast.error(error.message || 'Failed to save teacher');
@@ -175,14 +180,23 @@ const TeacherFormModal = ({ isOpen, onClose, onSuccess, teacher = null }) => {
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
                   Password *
                 </label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required={!teacher}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required={!teacher}
+                    className="w-full px-4 py-2 pr-10 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition"
+                  >
+                    {showPassword ? '🙈' : '👁️'}
+                  </button>
+                </div>
               </div>
             )}
 
