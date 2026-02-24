@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { authAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -14,6 +16,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const { setUser } = useAuth();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -26,7 +29,7 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const { firstName, lastName, email, password, agreeTerms } = formData;
+    const { firstName, lastName, email, password, agreeTerms, role } = formData;
 
     if (!firstName || !lastName || !email || !password) {
       toast.error('Please fill in all fields');
@@ -43,18 +46,32 @@ const Register = () => {
 
     setLoading(true);
 
-    setTimeout(() => {
-      const mockUser = {
-        name: `${firstName} ${lastName}`,
+    try {
+      const response = await authAPI.register({
+        username: email.split('@')[0],
         email,
-        role: formData.role,
-      };
-      localStorage.setItem('token', 'mock-token-register-12345');
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      toast.success('Account created successfully!');
-      navigate('/dashboard');
+        password,
+        role,
+        name: `${firstName} ${lastName}`,
+        phone: '',
+        address: ''
+      });
+
+      if (response.success) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        setUser(response.data.user);
+        toast.success('Account created successfully!');
+        navigate('/dashboard');
+      } else {
+        toast.error(response.message || 'Registration failed');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      toast.error(error.message || 'Failed to create account');
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   const inputFocus = (e) => {
