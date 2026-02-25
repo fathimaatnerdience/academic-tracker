@@ -10,7 +10,7 @@ const AIChatbot = () => {
     {
       id: 1,
       type: 'bot',
-      text: 'Hello! I\'m your AI Academic Assistant powered by Gemini. I can help you with student performance, class analysis, attendance insights, and personalized improvement plans. How can I assist you today?',
+      text: 'Hello! I\'m your AI Academic Assistant .How can I assist you today?',
       timestamp: new Date()
     }
   ]);

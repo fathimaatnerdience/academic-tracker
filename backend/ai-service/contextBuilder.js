@@ -11,6 +11,223 @@ export class AcademicContextBuilder {
     this.models = models;
   }
 
+  calculateAge(dateOfBirth) {
+    if (!dateOfBirth) return null;
+    const dob = new Date(dateOfBirth);
+    if (Number.isNaN(dob.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+      age -= 1;
+    }
+    return age;
+  }
+
+  async searchClassByName(name) {
+    const { Class } = this.models;
+
+    try {
+      const classes = await Class.findAll({
+        where: {
+          name: {
+            [Op.like]: `%${name}%`
+          }
+        }
+      });
+      return classes;
+    } catch (error) {
+      console.error('Error searching class by name:', error);
+      return [];
+    }
+  }
+
+  async getOverallGenderSummary() {
+    const { Student } = this.models;
+
+    try {
+      const students = await Student.findAll({
+        attributes: ['id', 'gender']
+      });
+
+      const total = students.length;
+      const male = students.filter(s => s.gender === 'male').length;
+      const female = students.filter(s => s.gender === 'female').length;
+      const other = students.filter(s => s.gender === 'other').length;
+
+      return {
+        total,
+        male,
+        female,
+        other,
+        maleRate: total > 0 ? ((male / total) * 100).toFixed(2) : 0,
+        femaleRate: total > 0 ? ((female / total) * 100).toFixed(2) : 0,
+        otherRate: total > 0 ? ((other / total) * 100).toFixed(2) : 0
+      };
+    } catch (error) {
+      console.error('Error computing overall gender summary:', error);
+      return null;
+    }
+  }
+
+  async getClassGenderRatio(classId) {
+    const { Student } = this.models;
+
+    try {
+      const students = await Student.findAll({
+        where: { classId },
+        attributes: ['id', 'gender']
+      });
+
+      const total = students.length;
+      const male = students.filter(s => s.gender === 'male').length;
+      const female = students.filter(s => s.gender === 'female').length;
+      const other = students.filter(s => s.gender === 'other').length;
+
+      return {
+        total,
+        male,
+        female,
+        other,
+        maleRate: total > 0 ? ((male / total) * 100).toFixed(2) : 0,
+        femaleRate: total > 0 ? ((female / total) * 100).toFixed(2) : 0,
+        otherRate: total > 0 ? ((other / total) * 100).toFixed(2) : 0
+      };
+    } catch (error) {
+      console.error('Error computing class gender ratio:', error);
+      return null;
+    }
+  }
+
+  async getClassAttendanceSummary(classId) {
+    const { Student, Attendance } = this.models;
+
+    try {
+      const students = await Student.findAll({
+        where: { classId },
+        attributes: ['id']
+      });
+      const studentIds = students.map(s => s.id);
+      if (studentIds.length === 0) {
+        return {
+          total: 0,
+          present: 0,
+          absent: 0,
+          late: 0,
+          excused: 0,
+          presentRate: 0,
+          absentRate: 0
+        };
+      }
+
+      const attendances = await Attendance.findAll({
+        where: { studentId: studentIds }
+      });
+
+      const total = attendances.length;
+      const present = attendances.filter(a => a.status === 'present').length;
+      const absent = attendances.filter(a => a.status === 'absent').length;
+      const late = attendances.filter(a => a.status === 'late').length;
+      const excused = attendances.filter(a => a.status === 'excused').length;
+
+      return {
+        total,
+        present,
+        absent,
+        late,
+        excused,
+        presentRate: total > 0 ? ((present / total) * 100).toFixed(2) : 0,
+        absentRate: total > 0 ? ((absent / total) * 100).toFixed(2) : 0
+      };
+    } catch (error) {
+      console.error('Error fetching class attendance summary:', error);
+      return null;
+    }
+  }
+
+  async getClassSubjectPerformance(classId) {
+    const { Student, Result, Exam, Assignment, Subject } = this.models;
+
+    try {
+      const students = await Student.findAll({
+        where: { classId },
+        attributes: ['id']
+      });
+      const studentIds = students.map(s => s.id);
+      if (studentIds.length === 0) return [];
+
+      const results = await Result.findAll({
+        where: { studentId: studentIds },
+        include: [
+          {
+            model: Exam,
+            as: 'exam',
+            required: false,
+            include: [{ model: Subject, as: 'subject', attributes: ['id', 'subjectName'] }]
+          },
+          {
+            model: Assignment,
+            as: 'assignment',
+            required: false,
+            include: [{ model: Subject, as: 'subject', attributes: ['id', 'subjectName'] }]
+          }
+        ]
+      });
+
+      const subjectAgg = {};
+      results.forEach(r => {
+        let subjectName = null;
+        if (r.exam && r.exam.subject) subjectName = r.exam.subject.subjectName;
+        else if (r.assignment && r.assignment.subject) subjectName = r.assignment.subject.subjectName;
+        if (!subjectName) return;
+        if (!subjectAgg[subjectName]) subjectAgg[subjectName] = { total: 0, count: 0 };
+        subjectAgg[subjectName].total += parseFloat(r.percentage || 0);
+        subjectAgg[subjectName].count += 1;
+      });
+
+      return Object.entries(subjectAgg)
+        .map(([subject, data]) => ({
+          subject,
+          averageScore: data.count > 0 ? (data.total / data.count).toFixed(2) : 0,
+          assessments: data.count
+        }))
+        .sort((a, b) => parseFloat(b.averageScore) - parseFloat(a.averageScore));
+    } catch (error) {
+      console.error('Error fetching class subject performance:', error);
+      return [];
+    }
+  }
+
+  async getGradeGenderSummary(gradeLevel) {
+    const { Student } = this.models;
+
+    try {
+      const students = await Student.findAll({
+        where: { gradeLevel },
+        attributes: ['id', 'gender']
+      });
+
+      const total = students.length;
+      const male = students.filter(s => s.gender === 'male').length;
+      const female = students.filter(s => s.gender === 'female').length;
+      const other = students.filter(s => s.gender === 'other').length;
+
+      return {
+        gradeLevel,
+        total,
+        male,
+        female,
+        other,
+        maleRate: total > 0 ? ((male / total) * 100).toFixed(2) : 0,
+        femaleRate: total > 0 ? ((female / total) * 100).toFixed(2) : 0,
+        otherRate: total > 0 ? ((other / total) * 100).toFixed(2) : 0
+      };
+    } catch (error) {
+      console.error('Error computing grade gender summary:', error);
+      return null;
+    }
+  }
+
   async getStudentsData(limit = 50) {
     const { Student, User, Class, Result, Attendance, Subject, Exam, Assignment } = this.models;
     
@@ -80,6 +297,7 @@ export class AcademicContextBuilder {
           class: s.class?.name,
           gradeLevel: s.gradeLevel,
           gender: s.gender,
+          age: this.calculateAge(s.dateOfBirth),
           averageScore: this.calculateAverageScore(studentResults),
           attendanceRate: this.calculateAttendanceRate(s.attendances),
           grades: this.summarizeGrades(studentResults),
@@ -364,6 +582,82 @@ export class AcademicContextBuilder {
     await safeLoad('subjectPerformance', () => this.getSubjectPerformance(), []);
     await safeLoad('attendanceSummary', () => this.getAttendanceSummary(), null);
 
+    const normalizedQuery = String(query || '').toLowerCase();
+    const wantsOverallGender =
+      normalizedQuery.includes('gender ratio') ||
+      normalizedQuery.includes('girls') ||
+      normalizedQuery.includes('boys') ||
+      normalizedQuery.includes('male') ||
+      normalizedQuery.includes('female') ||
+      normalizedQuery.includes('ratio');
+
+    if (wantsOverallGender) {
+      await safeLoad('overallGenderSummary', () => this.getOverallGenderSummary(), null);
+    }
+
+    const gradeMatch = query.match(/\bgrade\s*(\d{1,2})\b/i);
+    if (gradeMatch) {
+      const gradeLevel = parseInt(gradeMatch[1], 10);
+      if (!Number.isNaN(gradeLevel)) {
+        await safeLoad('gradeGenderSummary', () => this.getGradeGenderSummary(gradeLevel), null);
+      }
+    }
+
+    const queryWordsForClass = query.split(/\s+/);
+    let foundClass = null;
+    const stopWords = new Set(['grade', 'class', 'section', 'batch', 'standard']);
+    for (let i = 0; i < queryWordsForClass.length; i++) {
+      const word = queryWordsForClass[i].toLowerCase();
+      if (stopWords.has(word)) continue;
+
+      if (queryWordsForClass[i].length > 2 && /\d/.test(queryWordsForClass[i])) {
+        const classData = await this.searchClassByName(queryWordsForClass[i]);
+        if (classData.length > 0) {
+          foundClass = classData[0];
+          break;
+        }
+      }
+
+      if (i < queryWordsForClass.length - 1) {
+        const twoWords = `${queryWordsForClass[i]} ${queryWordsForClass[i + 1]}`;
+        if (twoWords.length > 3 && /\d/.test(twoWords)) {
+          const classData = await this.searchClassByName(twoWords);
+          if (classData.length > 0) {
+            foundClass = classData[0];
+            break;
+          }
+        }
+      }
+
+      if (i < queryWordsForClass.length - 2) {
+        const threeWords = `${queryWordsForClass[i]} ${queryWordsForClass[i + 1]} ${queryWordsForClass[i + 2]}`;
+        if (threeWords.length > 5 && /\d/.test(threeWords)) {
+          const classData = await this.searchClassByName(threeWords);
+          if (classData.length > 0) {
+            foundClass = classData[0];
+            break;
+          }
+        }
+      }
+    }
+
+    if (foundClass) {
+      try {
+        const genderRatio = await this.getClassGenderRatio(foundClass.id);
+        const attendance = await this.getClassAttendanceSummary(foundClass.id);
+        const subjectPerformance = await this.getClassSubjectPerformance(foundClass.id);
+
+        context.specificClass = {
+          ...foundClass.toJSON(),
+          genderRatio,
+          attendanceSummary: attendance,
+          subjectPerformance
+        };
+      } catch (error) {
+        console.error('Error loading specific class context:', error);
+      }
+    }
+
     // Search for specific student if name mentioned in query
     // Extract possible names (handle multi-word names like "Geeta Kumari")
     const queryWords = query.split(/\s+/);
@@ -422,6 +716,7 @@ export class AcademicContextBuilder {
         if (fullStudent) {
           context.specificStudent = {
             ...fullStudent.toJSON(),
+            age: this.calculateAge(fullStudent.dateOfBirth),
             averageScore: this.calculateAverageScore(fullStudent.results),
             attendanceRate: this.calculateAttendanceRate(fullStudent.attendances),
             weakSubjects: this.identifyWeakSubjects(fullStudent.results),

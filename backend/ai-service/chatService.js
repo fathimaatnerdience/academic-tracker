@@ -150,6 +150,7 @@ Guidelines:
 10. Each student entry includes subjectBreakdown showing every subject they take with individual scores
 11. IMPORTANT: If the user asks a follow-up question using pronouns like "she", "he", "this student", refer to the CURRENTLY DISCUSSED STUDENT and check their Subject Breakdown
 12. When listing subjects, ALWAYS use the actual subject names from the Subject Breakdown, never say "undefined"
+13. IMPORTANT: If asked about a specific class or batch, use the SPECIFIC CLASS context (gender ratio, attendance summary, subject performance) when available
 
 Available Data Context:`;
 
@@ -213,6 +214,55 @@ Available Data Context:`;
       prompt += `- Excused: ${a.excused}\n`;
     }
 
+    if (context.overallGenderSummary) {
+      const g = context.overallGenderSummary;
+      prompt += `\n\n👥 OVERALL GENDER SUMMARY (all students):\n`;
+      prompt += `- Total Students: ${g.total}\n`;
+      prompt += `- Girls: ${g.female} (${g.femaleRate}%)\n`;
+      prompt += `- Boys: ${g.male} (${g.maleRate}%)\n`;
+      prompt += `- Other: ${g.other} (${g.otherRate}%)\n`;
+    }
+
+    if (context.gradeGenderSummary) {
+      const g = context.gradeGenderSummary;
+      prompt += `\n\n🎓 GRADE ${g.gradeLevel} GENDER SUMMARY (all sections):\n`;
+      prompt += `- Total Students: ${g.total}\n`;
+      prompt += `- Girls: ${g.female} (${g.femaleRate}%)\n`;
+      prompt += `- Boys: ${g.male} (${g.maleRate}%)\n`;
+      prompt += `- Other: ${g.other} (${g.otherRate}%)\n`;
+    }
+
+    if (context.specificClass) {
+      const c = context.specificClass;
+      prompt += `\n\n🏫 SPECIFIC CLASS - ${c.name || 'Unknown'}:\n`;
+      prompt += `- Grade Level: ${c.gradeLevel ?? 'N/A'}\n`;
+      prompt += `- Section: ${c.section ?? 'N/A'}\n`;
+      prompt += `- Academic Year: ${c.academicYear ?? 'N/A'}\n`;
+
+      if (c.genderRatio) {
+        prompt += `- Gender Ratio (Total ${c.genderRatio.total}):\n`;
+        prompt += `  - Boys: ${c.genderRatio.male} (${c.genderRatio.maleRate}%)\n`;
+        prompt += `  - Girls: ${c.genderRatio.female} (${c.genderRatio.femaleRate}%)\n`;
+        prompt += `  - Other: ${c.genderRatio.other} (${c.genderRatio.otherRate}%)\n`;
+      }
+
+      if (c.attendanceSummary) {
+        prompt += `- Class Attendance Summary:\n`;
+        prompt += `  - Total Records: ${c.attendanceSummary.total}\n`;
+        prompt += `  - Present: ${c.attendanceSummary.present} (${c.attendanceSummary.presentRate}%)\n`;
+        prompt += `  - Absent: ${c.attendanceSummary.absent} (${c.attendanceSummary.absentRate}%)\n`;
+        prompt += `  - Late: ${c.attendanceSummary.late}\n`;
+        prompt += `  - Excused: ${c.attendanceSummary.excused}\n`;
+      }
+
+      if (c.subjectPerformance && c.subjectPerformance.length > 0) {
+        prompt += `- Class Subject Performance (average %):\n`;
+        c.subjectPerformance.slice(0, 12).forEach(s => {
+          prompt += `  - ${s.subject}: ${s.averageScore}% (${s.assessments} assessments)\n`;
+        });
+      }
+    }
+
     if (context.specificStudent) {
       const s = context.specificStudent;
       prompt += `\n\n👤 SPECIFIC STUDENT - ${s.user?.name || 'Unknown'}:\n`;
@@ -220,6 +270,9 @@ Available Data Context:`;
       prompt += `- Class: ${s.class?.name || 'N/A'}\n`;
       prompt += `- Grade Level: ${s.gradeLevel}\n`;
       prompt += `- Gender: ${s.gender}\n`;
+      if (s.age !== null && s.age !== undefined) {
+        prompt += `- Age: ${s.age}\n`;
+      }
       prompt += `- Overall Average: ${s.averageScore}%\n`;
       prompt += `- Attendance Rate: ${s.attendanceRate}%\n`;
       
