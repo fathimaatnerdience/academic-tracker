@@ -11,7 +11,7 @@ const chatService = new AcademicChatService(models);
 /**
  * @route   POST /api/ai/chat
  * @desc    Send a message to the AI chatbot
- * @access  Private (Admin, Teacher, Student)
+ * @access  Private (Admin, Teacher, Student only)
  */
 router.post('/chat', protect, authorize('admin', 'teacher', 'student'), async (req, res) => {
   try {

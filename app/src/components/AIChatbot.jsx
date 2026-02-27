@@ -24,6 +24,10 @@ const AIChatbot = () => {
     return null;
   }
 
+  if (user?.role === 'parent') {
+    return null;
+  }
+
   // Check AI service health on mount
   useEffect(() => {
     const checkHealth = async () => {
