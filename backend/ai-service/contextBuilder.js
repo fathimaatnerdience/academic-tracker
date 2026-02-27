@@ -652,7 +652,19 @@ export class AcademicContextBuilder {
     await safeLoad('attendanceSummary', () => this.getAttendanceSummary(), null);
 
     const normalizedQuery = String(query || '').toLowerCase();
+
+    // Detect if user is asking about the whole/entire school explicitly (including follow-ups)
+    const wantsWholeSchool =
+      normalizedQuery.includes('whole school') ||
+      normalizedQuery.includes('entire school') ||
+      normalizedQuery.includes('in the school') ||
+      normalizedQuery.includes('in school') ||
+      normalizedQuery.includes('all students') ||
+      normalizedQuery.includes('total students') ||
+      normalizedQuery.includes('total number');
+
     const wantsOverallGender =
+      wantsWholeSchool ||
       normalizedQuery.includes('gender ratio') ||
       normalizedQuery.includes('girls') ||
       normalizedQuery.includes('boys') ||

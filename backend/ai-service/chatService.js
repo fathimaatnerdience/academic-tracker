@@ -243,6 +243,7 @@ Guidelines:
 13. IMPORTANT: If the user asks a follow-up question using pronouns like "she", "he", "this student", refer to the CURRENTLY DISCUSSED STUDENT and check their Subject Breakdown
 14. When listing subjects, ALWAYS use the actual subject names from the Subject Breakdown, never say "undefined"
 15. IMPORTANT: If asked about a specific class or batch, use the SPECIFIC CLASS context (gender ratio, attendance summary, subject performance) when available
+16. CRITICAL: If the user asks about "whole school", "entire school", "all students", or "total number" of students/genders, use the OVERALL GENDER SUMMARY data which shows totals across the entire school, not class-specific data
 
 Available Data Context:`;
 
