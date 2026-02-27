@@ -20,8 +20,7 @@ const AIChatbot = () => {
   const [isAiHealthy, setIsAiHealthy] = useState(true);
   const messagesEndRef = useRef(null);
 
-  // Only show for admin and teacher
-  if (!user || (user.role !== 'admin' && user.role !== 'teacher')) {
+  if (!user) {
     return null;
   }
 

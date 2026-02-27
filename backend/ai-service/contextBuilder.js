@@ -11,6 +11,61 @@ export class AcademicContextBuilder {
     this.models = models;
   }
 
+  async getStudentByUserId(userId) {
+    const { Student } = this.models;
+    if (!userId) return null;
+    try {
+      return await Student.findOne({ where: { userId } });
+    } catch (error) {
+      console.error('Error fetching student by userId:', error);
+      return null;
+    }
+  }
+
+  async loadFullStudentById(studentId) {
+    if (!studentId) return null;
+    try {
+      const fullStudent = await this.models.Student.findByPk(studentId, {
+        include: [
+          { model: this.models.User, as: 'user' },
+          { model: this.models.Class, as: 'class' },
+          {
+            model: this.models.Result,
+            as: 'results',
+            include: [
+              {
+                model: this.models.Exam,
+                as: 'exam',
+                include: [{ model: this.models.Subject, as: 'subject', attributes: ['id', 'subjectName', 'code'] }]
+              },
+              {
+                model: this.models.Assignment,
+                as: 'assignment',
+                include: [{ model: this.models.Subject, as: 'subject', attributes: ['id', 'subjectName', 'code'] }]
+              }
+            ]
+          },
+          { model: this.models.Attendance, as: 'attendances' }
+        ]
+      });
+
+      if (!fullStudent) return null;
+
+      return {
+        ...fullStudent.toJSON(),
+        age: this.calculateAge(fullStudent.dateOfBirth),
+        averageScore: this.calculateAverageScore(fullStudent.results),
+        attendanceRate: this.calculateAttendanceRate(fullStudent.attendances),
+        weakSubjects: this.identifyWeakSubjects(fullStudent.results),
+        strongSubjects: this.identifyStrongSubjects(fullStudent.results),
+        subjectBreakdown: this.getSubjectBreakdown(fullStudent.results)
+      };
+    } catch (error) {
+      console.error('Error loading full student:', error);
+      return null;
+    }
+  }
+
   calculateAge(dateOfBirth) {
     if (!dateOfBirth) return null;
     const dob = new Date(dateOfBirth);
@@ -558,10 +613,24 @@ export class AcademicContextBuilder {
     return (sum / allResults.length).toFixed(2);
   }
 
-  async buildContextForQuery(query) {
-    // ALWAYS load comprehensive data for any query
-    // This ensures AI can answer follow-up questions about any student
+  async buildContextForQuery(query, user = null) {
     let context = {};
+
+    const role = user?.role;
+    const isStudentScoped = role === 'student';
+
+    if (isStudentScoped) {
+      const student = await this.getStudentByUserId(user?.id);
+
+      if (student) {
+        const full = await this.loadFullStudentById(student.id);
+        if (full) {
+          context.specificStudent = full;
+        }
+      }
+
+      return context;
+    }
 
     // Load all essential data for comprehensive responses
     const safeLoad = async (key, loaderFn, fallbackValue) => {
@@ -688,44 +757,9 @@ export class AcademicContextBuilder {
     }
     
     if (foundStudent) {
-      try {
-        const fullStudent = await this.models.Student.findByPk(foundStudent.id, {
-          include: [
-            { model: this.models.User, as: 'user' },
-            { model: this.models.Class, as: 'class' },
-            { 
-              model: this.models.Result, 
-              as: 'results',
-              include: [
-                { 
-                  model: this.models.Exam, 
-                  as: 'exam',
-                  include: [{ model: this.models.Subject, as: 'subject', attributes: ['id', 'subjectName', 'code'] }]
-                },
-                { 
-                  model: this.models.Assignment, 
-                  as: 'assignment',
-                  include: [{ model: this.models.Subject, as: 'subject', attributes: ['id', 'subjectName', 'code'] }]
-                }
-              ]
-            },
-            { model: this.models.Attendance, as: 'attendances' }
-          ]
-        });
-        
-        if (fullStudent) {
-          context.specificStudent = {
-            ...fullStudent.toJSON(),
-            age: this.calculateAge(fullStudent.dateOfBirth),
-            averageScore: this.calculateAverageScore(fullStudent.results),
-            attendanceRate: this.calculateAttendanceRate(fullStudent.attendances),
-            weakSubjects: this.identifyWeakSubjects(fullStudent.results),
-            strongSubjects: this.identifyStrongSubjects(fullStudent.results),
-            subjectBreakdown: this.getSubjectBreakdown(fullStudent.results)
-          };
-        }
-      } catch (error) {
-        console.error('Error loading specific student:', error);
+      const full = await this.loadFullStudentById(foundStudent.id);
+      if (full) {
+        context.specificStudent = full;
       }
     }
 
