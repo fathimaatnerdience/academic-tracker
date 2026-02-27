@@ -13,11 +13,11 @@ const router = express.Router();
 router.use(protect);
 
 router.route('/')
-  .get(authorize('admin', 'teacher'), getClasses)
+  .get(authorize('admin', 'teacher', 'student', 'parent'), getClasses)
   .post(authorize('admin'), createClass);
 
 router.route('/:id')
-  .get(authorize('admin', 'teacher'), getClass)
+  .get(authorize('admin', 'teacher', 'student', 'parent'), getClass)
   .put(authorize('admin'), updateClass)
   .delete(authorize('admin'), deleteClass);
 

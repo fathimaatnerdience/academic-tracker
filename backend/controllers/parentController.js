@@ -1,4 +1,4 @@
-import { Parent, User, Student } from '../models/index.js';
+import { Parent, User, Student, Teacher } from '../models/index.js';
 import { Op } from 'sequelize';
 import bcrypt from 'bcryptjs';
 
@@ -84,52 +84,48 @@ export const getParent = async (req, res) => {
 // @access  Private (Admin only)
 export const createParent = async (req, res) => {
   try {
-    const { 
-      name, 
-      email, 
-      password, 
-      username,
-      phone, 
-      address, 
-      occupation,
-      relationship,
-      studentIds
-    } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ 
-      where: { 
-        [Op.or]: [{ email }, { username }] 
-      } 
-    });
+    
+// Support both formats: { parentData, studentIds } and { name, email, ... }
+let parentData = req.body.parentData || req.body;
+let studentIds = req.body.studentIds;
 
-    if (existingUser) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Email or username already exists' 
-      });
+// Validate required fields
+if (!parentData.name) {
+  return res.status(400).json({ 
+    success: false, 
+    message: 'Name is required' 
+  });
+}
+if (!parentData.relationship) {
+  return res.status(400).json({ 
+    success: false, 
+    message: 'Relationship is required' 
+  });
+}
+
+
+    // Note: User table should ONLY contain self-registered users
+    // Admin-created parents are NOT added to User table
+    // Store name, email directly in Parent table
+
+    // Store name, email, phone, address directly in parent table
+    let finalParentData = { ...parentData };
+    finalParentData.name = parentData.name;
+    finalParentData.email = parentData.email;
+    finalParentData.phone = parentData.phone;
+    finalParentData.address = parentData.address;
+    
+    // Store password directly in parent table
+    if (parentData.password) {
+      finalParentData.password = parentData.password;
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user
-    const user = await User.create({
-      name,
-      email,
-      username: username || email.split('@')[0],
-      password: hashedPassword,
-      role: 'parent'
-    });
-
-    // Create parent
+    // Create parent - userId is always null for admin-created parents
     const parent = await Parent.create({
-      userId: user.id,
-      parentId: 'PAR' + Date.now().toString(36).toUpperCase(),
-      phone,
-      address,
-      occupation,
-      relationship: relationship || 'father'
+      ...finalParentData,
+      userId: null,
+      parentId: 'PAR' + Date.now().toString(36).toUpperCase()
     });
 
     // Associate with students if provided
@@ -177,35 +173,23 @@ export const updateParent = async (req, res) => {
       });
     }
 
-    const { 
-      name, 
-      email, 
-      username,
-      phone, 
-      address, 
-      occupation,
-      relationship,
-      studentIds 
-    } = req.body;
-
-    // Update user information
-    if (name || email || username) {
-      const userUpdates = {};
-      if (name) userUpdates.name = name;
-      if (email) userUpdates.email = email;
-      if (username) userUpdates.username = username;
-
-      await parent.user.update(userUpdates);
-    }
+    const { parentData, studentIds } = req.body;
 
     // Update parent information
-    const parentUpdates = {};
-    if (phone) parentUpdates.phone = phone;
-    if (address) parentUpdates.address = address;
-    if (occupation) parentUpdates.occupation = occupation;
-    if (relationship) parentUpdates.relationship = relationship;
+    if (parentData) {
+      const parentUpdates = {};
+      if (parentData.phone) parentUpdates.phone = parentData.phone;
+      if (parentData.address) parentUpdates.address = parentData.address;
+      if (parentData.occupation) parentUpdates.occupation = parentData.occupation;
+      if (parentData.relationship) parentUpdates.relationship = parentData.relationship;
 
-    await parent.update(parentUpdates);
+      // Update password if provided
+      if (parentData.password) {
+        parentUpdates.password = parentData.password;
+      }
+
+      await parent.update(parentUpdates);
+    }
 
     // Update student associations if provided
     if (studentIds && Array.isArray(studentIds)) {
@@ -256,9 +240,12 @@ export const deleteParent = async (req, res) => {
       });
     }
 
-    // Delete parent and associated user
+    // Only delete the associated User if it exists and parent has userId
+    if (parent.userId) {
+      await User.destroy({ where: { id: parent.userId } });
+    }
+
     await parent.destroy();
-    await parent.user.destroy();
 
     res.status(200).json({ 
       success: true, 

@@ -3,14 +3,18 @@
 // File: frontend/src/pages/ParentList.jsx
 // ============================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { parentsAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import { Plus, Search, Edit, Trash2, Users, Phone, Briefcase } from 'lucide-react';
 import ParentFormModal from '../components/ParentFormModal';
+import { handleError, debounce } from '../utils/errorHandler';
+import { useAuth } from '../contexts/AuthContext';
 
 const ParentList = () => {
   const [parents, setParents] = useState([]);
+  const { user } = useAuth();
+  
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -18,26 +22,44 @@ const ParentList = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedParent, setSelectedParent] = useState(null);
 
-  useEffect(() => {
-    fetchParents();
-  }, [currentPage, searchTerm]);
-
-  const fetchParents = async () => {
+  // Fetch parents function
+  const fetchParents = useCallback(async (page = currentPage, search = searchTerm) => {
     try {
       setLoading(true);
       const response = await parentsAPI.getAll({
-        page: currentPage,
+        page: page,
         limit: 10,
-        search: searchTerm
+        search: search
       });
-      setParents(response.data);
-      setTotalPages(response.totalPages);
+      setParents(response.data || []);
+      setTotalPages(response.totalPages || 1);
     } catch (error) {
-      toast.error('Failed to fetch parents');
+      handleError(error, 'Failed to load parents');
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // Create debounced search function
+  const debouncedSearch = useMemo(
+    () => debounce((value) => {
+      setCurrentPage(1);
+      fetchParents(1, value);
+    }, 500),
+    [fetchParents]
+  );
+
+  // Handle search input change
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    debouncedSearch(value);
   };
+
+  // Initial load and page change
+  useEffect(() => {
+    fetchParents(currentPage, searchTerm);
+  }, [currentPage]);
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this parent? This will also delete their user account.')) return;
@@ -47,7 +69,7 @@ const ParentList = () => {
       toast.success('Parent deleted successfully');
       fetchParents();
     } catch (error) {
-      toast.error('Failed to delete parent');
+      handleError(error, 'Failed to delete parent');
     }
   };
 
@@ -56,13 +78,17 @@ const ParentList = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Parents</h1>
-        <button
-          onClick={() => { setSelectedParent(null); setShowModal(true); }}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-        >
-          <Plus size={20} />
-          Add Parent
-        </button>
+        
+        {/* Only show Add button for Admin */}
+        {user?.role === 'admin' && (
+          <button
+            onClick={() => { setSelectedParent(null); setShowModal(true); }}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          >
+            <Plus size={20} />
+            Add Parent
+          </button>
+        )}
       </div>
 
       {/* Search */}
@@ -73,7 +99,7 @@ const ParentList = () => {
             type="text"
             placeholder="Search parents by name, email, or phone..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={handleSearchChange}
             className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
         </div>
@@ -110,9 +136,11 @@ const ParentList = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Children
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
+                    {user?.role === 'admin' && (
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -124,8 +152,8 @@ const ParentList = () => {
                             <Users className="text-purple-600" size={20} />
                           </div>
                           <div>
-                            <div className="font-medium text-gray-900">{parent.user?.name}</div>
-                            <div className="text-sm text-gray-500">{parent.user?.email}</div>
+                            <div className="font-medium text-gray-900">{parent.name || parent.user?.name || 'N/A'}</div>
+                            <div className="text-sm text-gray-500">{parent.email || parent.user?.email || 'N/A'}</div>
                             {parent.relationship && (
                               <div className="text-xs text-gray-400 capitalize">{parent.relationship}</div>
                             )}
@@ -164,24 +192,26 @@ const ParentList = () => {
                           <span className="text-sm text-gray-400">No children linked</span>
                         )}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => { setSelectedParent(parent); setShowModal(true); }}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition"
-                            title="Edit"
-                          >
-                            <Edit size={18} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(parent.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                            title="Delete"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </td>
+                      {user?.role === 'admin' && (
+                        <td className="px-6 py-4">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => { setSelectedParent(parent); setShowModal(true); }}
+                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition"
+                              title="Edit"
+                            >
+                              <Edit size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(parent.id)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                              title="Delete"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

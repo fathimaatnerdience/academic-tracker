@@ -15,7 +15,7 @@ router.use(protect);
 
 // Routes
 router.route('/')
-  .get(authorize('admin', 'teacher'), getParents)
+  .get(authorize('admin', 'teacher', 'student'), getParents)
   .post(authorize('admin'), createParent);
 
 router.route('/:id')
@@ -24,4 +24,3 @@ router.route('/:id')
   .delete(authorize('admin'), deleteParent);
 
 export default router;
-

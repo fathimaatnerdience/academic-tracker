@@ -49,11 +49,16 @@ const AttendanceFormModal = ({ isOpen, onClose, onSuccess, attendance = null }) 
     setLoading(true);
 
     try {
+      const dataToSend = {
+        ...formData,
+        lessonId: formData.lessonId || null
+      };
+      
       if (attendance) {
-        await attendanceAPI.update(attendance.id, formData);
+        await attendanceAPI.update(attendance.id, dataToSend);
         toast.success('Attendance updated!');
       } else {
-        await attendanceAPI.create(formData);
+        await attendanceAPI.create(dataToSend);
         toast.success('Attendance marked!');
       }
       onSuccess();
@@ -78,18 +83,16 @@ const AttendanceFormModal = ({ isOpen, onClose, onSuccess, attendance = null }) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl">
-        
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-2xl font-bold">{attendance ? 'Edit Attendance' : 'Mark Attendance'}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
-            <X size={24} />
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-6 border-b">
+          <h2 className="text-xl font-bold">{attendance ? 'Edit' : 'Mark'} Attendance</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
+            <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold mb-1">Student *</label>
               <select
@@ -99,23 +102,27 @@ const AttendanceFormModal = ({ isOpen, onClose, onSuccess, attendance = null }) 
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select Student</option>
-                {students.map(s => (
-                  <option key={s.id} value={s.id}>{s.user?.name} - {s.studentId}</option>
+                {students.map((student) => (
+                  <option key={student.id} value={student.id}>
+                    {student.user?.name} ({student.studentId})
+                  </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-1">Lesson *</label>
+              <label className="block text-sm font-semibold mb-1">Subject *</label>
               <select
                 value={formData.lessonId}
                 onChange={(e) => setFormData({...formData, lessonId: e.target.value})}
                 required
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Select Lesson</option>
-                {lessons.map(l => (
-                  <option key={l.id} value={l.id}>{l.subject?.name} - {l.class?.name}</option>
+                <option value="">Select Subject</option>
+                {lessons.map((lesson) => (
+                  <option key={lesson.id} value={lesson.id}>
+                    {lesson.subject?.subjectName} - {lesson.class?.name}
+                  </option>
                 ))}
               </select>
             </div>

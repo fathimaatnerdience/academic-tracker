@@ -24,7 +24,8 @@ export const getClasses = async (req, res) => {
     // Add supervisorName directly to each class object
     const data = rows.map(classItem => {
       const classData = classItem.toJSON();
-      classData.supervisorName = classData.supervisor?.user?.name || null;
+      // Check both teacher.name (admin-created) and user.name (self-registered)
+      classData.supervisorName = classData.supervisor?.name || classData.supervisor?.user?.name || null;
       return classData;
     });
 
@@ -54,7 +55,7 @@ export const getClass = async (req, res) => {
     }
 
     const data = classData.toJSON();
-    data.supervisorName = data.supervisor?.user?.name || null;
+    data.supervisorName = data.supervisor?.name || data.supervisor?.user?.name || null;
 
     res.status(200).json({ success: true, data: data });
   } catch (error) {
@@ -81,7 +82,8 @@ export const createClass = async (req, res) => {
         include: [{ model: User, as: 'user' }]
       });
       if (teacher) {
-        supervisorName = teacher.user?.name || null;
+        // Check both teacher.name (admin-created) and user.name (self-registered)
+        supervisorName = teacher.name || teacher.user?.name || null;
       }
     }
 
@@ -132,7 +134,8 @@ export const updateClass = async (req, res) => {
         const teacher = await Teacher.findByPk(req.body.supervisorId, {
           include: [{ model: User, as: 'user' }]
         });
-        req.body.supervisorName = teacher?.user?.name || null;
+        // Check both teacher.name (admin-created) and user.name (self-registered)
+        req.body.supervisorName = teacher?.name || teacher?.user?.name || null;
       } else {
         req.body.supervisorName = null;
       }

@@ -2,24 +2,9 @@ import Student from '../models/Student.js';
 import User from '../models/User.js';
 import Class from '../models/Class.js';
 import Parent from '../models/Parent.js';
+import Teacher from '../models/Teacher.js';
 import { ErrorResponse } from '../middleware/error.js';
 import { Op } from 'sequelize';
-
-// Helper function to generate unique username
-const generateUniqueUsername = async (baseUsername) => {
-  let username = baseUsername.toLowerCase().replace(/\s+/g, '.');
-  let counter = 0;
-  let finalUsername = username;
-  
-  while (true) {
-    const existingUser = await User.findOne({ where: { username: finalUsername } });
-    if (!existingUser) break;
-    counter++;
-    finalUsername = `${username}${counter}`;
-  }
-  
-  return finalUsername;
-};
 
 // @desc    Get all students
 // @route   GET /api/students
@@ -44,22 +29,28 @@ export const getStudents = async (req, res, next) => {
       ];
     }
 
-    const { count, rows } = await Student.findAndCountAll({
-      where,
-      include: [
-        {
-          model: User,
-          as: 'user',
-          where: userWhere,
-          attributes: { exclude: ['password'] }
-        },
-        { model: Class, as: 'class' },
-        { model: Parent, as: 'parent', include: [{ model: User, as: 'user' }] }
-      ],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      order: [['createdAt', 'DESC']]
-    });
+    
+// Build include array - make User include optional when no search
+const include = [
+  {
+    model: User,
+    as: 'user',
+    where: Object.keys(userWhere).length > 0 ? userWhere : undefined,
+    required: Object.keys(userWhere).length > 0,
+    attributes: { exclude: ['password'] }
+  },
+  { model: Class, as: 'class' },
+  { model: Parent, as: 'parent', include: [{ model: User, as: 'user' }] }
+];
+
+const { count, rows } = await Student.findAndCountAll({
+  where,
+  include,
+  limit: parseInt(limit),
+  offset: parseInt(offset),
+  order: [['createdAt', 'DESC']]
+});
+
 
     res.status(200).json({
       success: true,
@@ -114,26 +105,24 @@ export const createStudent = async (req, res, next) => {
   try {
     const { userData, studentData } = req.body;
 
-    // Check if user exists
-    const userExists = await User.findOne({ where: { email: userData.email } });
-    if (userExists) {
-      return next(new ErrorResponse('User already exists with this email', 400));
+    // Validate required fields
+    if (!studentData) {
+      return next(new ErrorResponse('Student data is required', 400));
+    }
+    // Check name in userData (from frontend)
+    if (!userData || !userData.name) {
+      return next(new ErrorResponse('Name is required', 400));
+    }
+    if (!studentData.dateOfBirth) {
+      return next(new ErrorResponse('Date of birth is required', 400));
+    }
+    if (!studentData.gender) {
+      return next(new ErrorResponse('Gender is required', 400));
     }
 
-    // Generate username from name or email if not provided
-    const baseUsername = userData.username || 
-      (userData.name ? userData.name.toLowerCase().replace(/\s+/g, '.') : null) ||
-      userData.email.split('@')[0];
-
-    // Generate unique username
-    const username = await generateUniqueUsername(baseUsername || 'student');
-
-    // Create user
-    const user = await User.create({
-      ...userData,
-      username,
-      role: 'student'
-    });
+    // Note: User table should ONLY contain self-registered users
+    // Admin-created students are NOT added to User table
+    // Store name, email directly in Student table
 
     // If classId is provided, get gradeLevel and section from Class
     let finalStudentData = { ...studentData };
@@ -160,14 +149,25 @@ export const createStudent = async (req, res, next) => {
       finalStudentData.section = null;
     }
 
-    // Create student
+    // Store name, email, phone, address directly in student table
+    finalStudentData.name = userData.name;
+    finalStudentData.email = userData.email;
+    finalStudentData.phone = userData.phone;
+    finalStudentData.address = userData.address;
+    
+    // Store password directly in student table
+    if (userData.password) {
+      finalStudentData.password = userData.password;
+    }
+
+    // Create student - userId is always null for admin-created students
     const student = await Student.create({
       ...finalStudentData,
-      userId: user.id,
+      userId: null,
       studentId: `STU${Date.now()}`
     });
 
-    // Fetch complete student data
+    // Fetch complete student with associations
     const completeStudent = await Student.findByPk(student.id, {
       include: [
         { 
@@ -200,19 +200,7 @@ export const updateStudent = async (req, res, next) => {
       return next(new ErrorResponse('Student not found', 404));
     }
 
-    const { userData, studentData } = req.body;
-
-    // Update user data
-    if (userData) {
-      const user = await User.findByPk(student.userId);
-      // Generate username if not provided but name is being updated
-      if (!userData.username && userData.name) {
-        userData.username = await generateUniqueUsername(
-          userData.name.toLowerCase().replace(/\s+/g, '.')
-        );
-      }
-      await user.update(userData);
-    }
+    const { studentData } = req.body;
 
     // Update student data - if classId is changed, also update gradeLevel and section
     if (studentData) {
@@ -270,8 +258,12 @@ export const deleteStudent = async (req, res, next) => {
       return next(new ErrorResponse('Student not found', 404));
     }
 
-    // Delete user (cascade will delete student)
-    await User.destroy({ where: { id: student.userId } });
+    // Only delete the associated User if it exists and student has userId
+    if (student.userId) {
+      await User.destroy({ where: { id: student.userId } });
+    }
+
+    await student.destroy();
 
     res.status(200).json({
       success: true,

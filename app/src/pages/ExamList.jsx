@@ -3,15 +3,21 @@ import { examsAPI, subjectsAPI, classesAPI, teachersAPI } from '../services/api'
 import { toast } from 'react-toastify';
 import { Plus, Search, Edit, Trash2, Calendar, Clock, FileText } from 'lucide-react';
 import ExamFormModal from '../components/ExamFormModal';
+import { handleError } from '../utils/errorHandler';
+import { useAuth } from '../contexts/AuthContext';
 
 const ExamList = () => {
   const [exams, setExams] = useState([]);
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [selectedExam, setSelectedExam] = useState(null);
+
+  // Show Add/Edit buttons for Admin and Teacher
+  const canEdit = user?.role === 'admin' || user?.role === 'teacher';
 
   useEffect(() => {
     fetchExams();
@@ -28,7 +34,7 @@ const ExamList = () => {
       setExams(response.data);
       setTotalPages(response.totalPages);
     } catch (error) {
-      toast.error('Failed to fetch exams');
+      handleError(error, 'Failed to fetch exams');
     } finally {
       setLoading(false);
     }
@@ -41,7 +47,7 @@ const ExamList = () => {
       toast.success('Exam deleted');
       fetchExams();
     } catch (error) {
-      toast.error('Failed to delete exam');
+      handleError(error, 'Failed to delete exam');
     }
   };
 
@@ -59,13 +65,17 @@ const ExamList = () => {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Exams</h1>
-        <button
-          onClick={() => { setSelectedExam(null); setShowModal(true); }}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-        >
-          <Plus size={20} />
-          Add Exam
-        </button>
+        
+        {/* Show Add button for Admin and Teacher */}
+        {canEdit && (
+          <button
+            onClick={() => { setSelectedExam(null); setShowModal(true); }}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          >
+            <Plus size={20} />
+            Add Exam
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow p-4 mb-6">
@@ -93,12 +103,15 @@ const ExamList = () => {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Exam</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teacher</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Marks</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  {canEdit && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -115,7 +128,8 @@ const ExamList = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm">{exam.subject?.name}</td>
+                    <td className="px-6 py-4 text-sm">{exam.subject?.subjectName}</td>
+                    <td className="px-6 py-4 text-sm">{exam.teacher?.user?.name || exam.teacher?.name || 'N/A'}</td>
                     <td className="px-6 py-4 text-sm">{exam.class?.name}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
@@ -135,16 +149,18 @@ const ExamList = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm">{exam.totalMarks}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        <button onClick={() => { setSelectedExam(exam); setShowModal(true); }}>
-                          <Edit size={18} className="text-green-600" />
-                        </button>
-                        <button onClick={() => handleDelete(exam.id)}>
-                          <Trash2 size={18} className="text-red-600" />
-                        </button>
-                      </div>
-                    </td>
+                    {canEdit && (
+                      <td className="px-6 py-4">
+                        <div className="flex gap-2">
+                          <button onClick={() => { setSelectedExam(exam); setShowModal(true); }}>
+                            <Edit size={18} className="text-green-600" />
+                          </button>
+                          <button onClick={() => handleDelete(exam.id)}>
+                            <Trash2 size={18} className="text-red-600" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

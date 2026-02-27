@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { authAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { handleError } from '../utils/errorHandler';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -14,6 +15,7 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
 
     if (!email || !password) {
       toast.error('Please fill in all fields');
@@ -35,8 +37,7 @@ const Login = () => {
         toast.error(response.message || 'Login failed');
       }
     } catch (error) {
-      console.error('Login error:', error);
-      toast.error(error.message || 'Invalid credentials');
+      handleError(error, 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -56,12 +57,8 @@ const Login = () => {
           {/* Logo / Brand */}
           <div className="mb-4 sm:mb-6 md:mb-10 text-center">
             <div className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 mx-auto mb-3 sm:mb-4 md:mb-6 rounded-full bg-white flex items-center justify-center shadow-lg">
-              <svg viewBox="0 0 64 64" className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14" fill="none">
-                <rect x="8" y="20" width="48" height="34" rx="4" fill="#1976D2" />
-                <rect x="20" y="8" width="24" height="16" rx="3" fill="#FFC107" />
-                <rect x="26" y="32" width="12" height="16" rx="2" fill="white" />
-                <circle cx="32" cy="16" r="4" fill="white" />
-              </svg>
+
+              <img src="/ac.logo.png" alt="Academic Tracker Logo" className="w-20 h-20 rounded-full mx-auto mb-0 scale-110" />
             </div>
             <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-white tracking-tight drop-shadow">
               Academic
@@ -151,12 +148,12 @@ const Login = () => {
                 </div>
               </div>
 
-              {/* Forgot Password */}
+              {/* Forgot Password 
               <div className="flex justify-end">
                 <button type="button" className="text-xs sm:text-sm font-medium" style={{ color: '#1976D2' }}>
                   Forgot Password?
                 </button>
-              </div>
+              </div>*/}
 
               {/* Sign In Button */}
               <button

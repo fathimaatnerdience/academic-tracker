@@ -3,9 +3,12 @@ import { subjectsAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import { Plus, Search, Edit, Trash2, BookOpen } from 'lucide-react';
 import SubjectFormModal from '../components/SubjectFormModal';
+import { handleError } from '../utils/errorHandler';
+import { useAuth } from '../contexts/AuthContext';
 
 const SubjectList = () => {
   const [subjects, setSubjects] = useState([]);
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -28,7 +31,7 @@ const SubjectList = () => {
       setSubjects(response.data);
       setTotalPages(response.totalPages);
     } catch (error) {
-      toast.error('Failed to fetch subjects');
+      handleError(error, 'Failed to fetch subjects');
     } finally {
       setLoading(false);
     }
@@ -42,7 +45,7 @@ const SubjectList = () => {
       toast.success('Subject deleted');
       fetchSubjects();
     } catch (error) {
-      toast.error('Failed to delete subject');
+      handleError(error, 'Failed to delete subject');
     }
   };
 
@@ -60,13 +63,17 @@ const SubjectList = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Subjects</h1>
-        <button
-          onClick={() => { setSelectedSubject(null); setShowModal(true); }}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-        >
-          <Plus size={20} />
-          Add Subject
-        </button>
+        
+        {/* Only show Add button for Admin */}
+        {user?.role === 'admin' && (
+          <button
+            onClick={() => { setSelectedSubject(null); setShowModal(true); }}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          >
+            <Plus size={20} />
+            Add Subject
+          </button>
+        )}
       </div>
 
       {/* Search */}
@@ -99,7 +106,9 @@ const SubjectList = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grade</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Credits</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  {user?.role === 'admin' && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -126,16 +135,18 @@ const SubjectList = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">{subject.credits || 'N/A'}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        <button onClick={() => { setSelectedSubject(subject); setShowModal(true); }} className="text-green-600">
-                          <Edit size={18} />
-                        </button>
-                        <button onClick={() => handleDelete(subject.id)} className="text-red-600">
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </td>
+                    {user?.role === 'admin' && (
+                      <td className="px-6 py-4">
+                        <div className="flex gap-2">
+                          <button onClick={() => { setSelectedSubject(subject); setShowModal(true); }} className="text-green-600">
+                            <Edit size={18} />
+                          </button>
+                          <button onClick={() => handleDelete(subject.id)} className="text-red-600">
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

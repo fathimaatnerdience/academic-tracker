@@ -144,7 +144,7 @@ const AssignmentFormModal = ({ isOpen, onClose, onSuccess, assignment = null }) 
               >
                 <option value="">Select Teacher</option>
                 {teachers.map(t => (
-                  <option key={t.id} value={t.id}>{t.user?.name}</option>
+                  <option key={t.id} value={t.id}>{t.name || t.user?.name}</option>
                 ))}
               </select>
             </div>

@@ -5,6 +5,7 @@ import { lessonsAPI, subjectsAPI, classesAPI, teachersAPI } from '../services/ap
 
 const LessonFormModal = ({ isOpen, onClose, onSuccess, lesson = null }) => {
   const [loading, setLoading] = useState(false);
+  const [dropdownLoading, setDropdownLoading] = useState(true);
   const [subjects, setSubjects] = useState([]);
   const [classes, setClasses] = useState([]);
   const [teachers, setTeachers] = useState([]);
@@ -12,7 +13,7 @@ const LessonFormModal = ({ isOpen, onClose, onSuccess, lesson = null }) => {
     subjectId: '',
     classId: '',
     teacherId: '',
-    dayOfWeek: 0,
+    dayOfWeek: 'Monday',
     startTime: '09:00',
     endTime: '10:00',
     room: ''
@@ -30,7 +31,7 @@ const LessonFormModal = ({ isOpen, onClose, onSuccess, lesson = null }) => {
         subjectId: lesson.subjectId || '',
         classId: lesson.classId || '',
         teacherId: lesson.teacherId || '',
-        dayOfWeek: lesson.dayOfWeek || 0,
+        dayOfWeek: lesson.dayOfWeek || 'Monday',
         startTime: lesson.startTime || '09:00',
         endTime: lesson.endTime || '10:00',
         room: lesson.room || ''
@@ -39,17 +40,23 @@ const LessonFormModal = ({ isOpen, onClose, onSuccess, lesson = null }) => {
   }, [lesson]);
 
   const fetchDropdownData = async () => {
+    setDropdownLoading(true);
     try {
       const [subjectsRes, classesRes, teachersRes] = await Promise.all([
         subjectsAPI.getAll({ limit: 100 }),
         classesAPI.getAll({ limit: 100 }),
         teachersAPI.getAll({ limit: 100 })
       ]);
-      setSubjects(subjectsRes.data);
-      setClasses(classesRes.data);
-      setTeachers(teachersRes.data);
+      console.log('Subjects response:', subjectsRes);
+      console.log('Classes response:', classesRes);
+      console.log('Teachers response:', teachersRes);
+      setSubjects(subjectsRes.data || []);
+      setClasses(classesRes.data || []);
+      setTeachers(teachersRes.data || []);
     } catch (error) {
-      console.error('Failed to fetch dropdown data');
+      console.error('Failed to fetch dropdown data:', error);
+    } finally {
+      setDropdownLoading(false);
     }
   };
 
@@ -89,61 +96,78 @@ const LessonFormModal = ({ isOpen, onClose, onSuccess, lesson = null }) => {
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           
+          {/* Debug info 
+          <div className="bg-yellow-50 text-xs ">
+            Debug: {subjects.length} subjects, {classes.length} classes, {teachers.length} teachers loaded
+          </div>*/}
+          
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold mb-1">Subject *</label>
-              <select
-                value={formData.subjectId}
-                onChange={(e) => setFormData({...formData, subjectId: e.target.value})}
-                required
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select Subject</option>
-                {subjects.map(s => (
-                  <option key={s.id} value={s.id}>{s.subjectName}</option>
-                ))}
-              </select>
+              {dropdownLoading ? (
+                <div className="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-500">Loading...</div>
+              ) : (
+                <select
+                  value={formData.subjectId}
+                  onChange={(e) => setFormData({...formData, subjectId: e.target.value})}
+                  required
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Subject ({subjects.length} available)</option>
+                  {subjects.map(s => (
+                    <option key={s.id} value={s.id}>{s.subjectName || 'UNDEFINED'}</option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-semibold mb-1">Class *</label>
-              <select
-                value={formData.classId}
-                onChange={(e) => setFormData({...formData, classId: e.target.value})}
-                required
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select Class</option>
-                {classes.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+              {dropdownLoading ? (
+                <div className="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-500">Loading...</div>
+              ) : (
+                <select
+                  value={formData.classId}
+                  onChange={(e) => setFormData({...formData, classId: e.target.value})}
+                  required
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Class ({classes.length} available)</option>
+                  {classes.map(c => (
+                    <option key={c.id} value={c.id}>{c.name || 'UNDEFINED'}</option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-semibold mb-1">Teacher *</label>
-              <select
-                value={formData.teacherId}
-                onChange={(e) => setFormData({...formData, teacherId: e.target.value})}
-                required
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select Teacher</option>
-                {teachers.map(t => (
-                  <option key={t.id} value={t.id}>{t.user?.name}</option>
-                ))}
-              </select>
+              {dropdownLoading ? (
+                <div className="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-500">Loading...</div>
+              ) : (
+                <select
+                  value={formData.teacherId}
+                  onChange={(e) => setFormData({...formData, teacherId: e.target.value})}
+                  required
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Teacher ({teachers.length} available)</option>
+                  {teachers.map(t => (
+                    <option key={t.id} value={t.id}>{t.name || t.user?.name || 'UNDEFINED'}</option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-semibold mb-1">Day of Week *</label>
               <select
                 value={formData.dayOfWeek}
-                onChange={(e) => setFormData({...formData, dayOfWeek: parseInt(e.target.value)})}
+                onChange={(e) => setFormData({...formData, dayOfWeek: e.target.value})}
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
               >
-                {daysOfWeek.map((day, i) => (
-                  <option key={i} value={i}>{day}</option>
+                {daysOfWeek.map((day) => (
+                  <option key={day} value={day}>{day}</option>
                 ))}
               </select>
             </div>

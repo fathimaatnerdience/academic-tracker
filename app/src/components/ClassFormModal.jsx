@@ -19,38 +19,39 @@ const ClassFormModal = ({ isOpen, onClose, onSuccess, classData = null }) => {
     fetchTeachers();
   }, []);
 
-  // Reset form when modal opens for new class (not editing)
+  // Populate form when editing existing class OR reset for new
   useEffect(() => {
-    if (isOpen && !classData) {
-      setFormData({
-        name: '',
-        gradeLevel: 1,
-        section: 'A',
-        capacity: 30,
-        supervisorId: '',
-        academicYear: new Date().getFullYear()
-      });
+    if (isOpen) {
+      if (classData) {
+        // Editing existing class - populate form
+        setFormData({
+          name: classData.name || '',
+          gradeLevel: classData.gradeLevel || 1,
+          section: classData.section || 'A',
+          capacity: classData.capacity || 30,
+          supervisorId: classData.supervisorId || '',
+          academicYear: classData.academicYear || new Date().getFullYear()
+        });
+      } else {
+        // New class - reset to empty/default values
+        setFormData({
+          name: '',
+          gradeLevel: 1,
+          section: 'A',
+          capacity: 30,
+          supervisorId: '',
+          academicYear: new Date().getFullYear()
+        });
+      }
     }
   }, [isOpen, classData]);
-
-  // Populate form when editing existing class
-  useEffect(() => {
-    if (classData) {
-      setFormData({
-        name: classData.name || '',
-        gradeLevel: classData.gradeLevel || 1,
-        section: classData.section || 'A',
-        capacity: classData.capacity || 30,
-        supervisorId: classData.supervisorId || '',
-        academicYear: classData.academicYear || new Date().getFullYear()
-      });
-    }
-  }, [classData]);
 
   const fetchTeachers = async () => {
     try {
       const response = await teachersAPI.getAll({ limit: 100 });
-      setTeachers(response.data);
+      // API returns { success, count, totalPages, currentPage, data: rows }
+      // Access response.data to get the array of teachers
+      setTeachers(response.data || []);
     } catch (error) {
       console.error('Failed to fetch teachers');
     }
@@ -158,7 +159,7 @@ const ClassFormModal = ({ isOpen, onClose, onSuccess, classData = null }) => {
                 <option value="">Select Supervisor</option>
                 {teachers.map(teacher => (
                   <option key={teacher.id} value={teacher.id}>
-                    {teacher.user?.name}
+                    {teacher.name || teacher.user?.name || 'N/A'}
                   </option>
                 ))}
               </select>

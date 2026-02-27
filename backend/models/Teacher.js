@@ -1,4 +1,5 @@
 import { DataTypes } from 'sequelize';
+import bcrypt from 'bcryptjs';
 import { sequelize } from '../config/database.js';
 
 const Teacher = sequelize.define('Teacher', {
@@ -9,17 +10,44 @@ const Teacher = sequelize.define('Teacher', {
   },
   userId: {
     type: DataTypes.UUID,
-    allowNull: false,
+    allowNull: true,
     references: {
       model: 'users',
       key: 'id'
     },
-    onDelete: 'CASCADE'
+    onDelete: 'SET NULL'
   },
   teacherId: {
     type: DataTypes.STRING(20),
     allowNull: false,
     unique: false
+  },
+  // Direct fields for admin-created teachers (not linked to User table)
+  name: {
+    type: DataTypes.STRING(100),
+    allowNull: true
+  },
+  email: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    validate: {
+      isEmail: true
+    }
+  },
+  phone: {
+    type: DataTypes.STRING(20),
+    allowNull: true
+  },
+  address: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  password: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    validate: {
+      len: [6, 100]
+    }
   },
   dateOfBirth: {
     type: DataTypes.DATEONLY,
@@ -61,7 +89,26 @@ const Teacher = sequelize.define('Teacher', {
   }
 }, {
   tableName: 'teachers',
-  timestamps: true
+  timestamps: true,
+  hooks: {
+    beforeCreate: async (teacher) => {
+      if (teacher.password) {
+        const salt = await bcrypt.genSalt(10);
+        teacher.password = await bcrypt.hash(teacher.password, salt);
+      }
+    },
+    beforeUpdate: async (teacher) => {
+      if (teacher.changed('password')) {
+        const salt = await bcrypt.genSalt(10);
+        teacher.password = await bcrypt.hash(teacher.password, salt);
+      }
+    }
+  }
 });
+
+// Instance method to check password
+Teacher.prototype.matchPassword = async function(enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
 
 export default Teacher;

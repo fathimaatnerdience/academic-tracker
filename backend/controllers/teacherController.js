@@ -1,30 +1,20 @@
 import Teacher from '../models/Teacher.js';
 import User from '../models/User.js';
+import Student from '../models/Student.js';
+import Parent from '../models/Parent.js';
 import { ErrorResponse } from '../middleware/error.js';
 import { Op } from 'sequelize';
 
-// Helper function to generate unique username
-const generateUniqueUsername = async (baseUsername) => {
-  let username = baseUsername.toLowerCase().replace(/\s+/g, '.');
-  let counter = 0;
-  let finalUsername = username;
-  
-  while (true) {
-    const existingUser = await User.findOne({ where: { username: finalUsername } });
-    if (!existingUser) break;
-    counter++;
-    finalUsername = `${username}${counter}`;
-  }
-  
-  return finalUsername;
-};
-
+// @desc    Get all teachers
+// @route   GET /api/teachers
+// @access  Private (Admin, Teacher)
 export const getTeachers = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, search } = req.query;
     const offset = (page - 1) * limit;
     
-    const userWhere = search ? {
+    // For teachers, we search directly in Teacher table
+    const where = search ? {
       [Op.or]: [
         { name: { [Op.like]: `%${search}%` } },
         { email: { [Op.like]: `%${search}%` } }
@@ -32,10 +22,10 @@ export const getTeachers = async (req, res, next) => {
     } : {};
 
     const { count, rows } = await Teacher.findAndCountAll({
+      where,
       include: [{
         model: User,
         as: 'user',
-        where: userWhere,
         attributes: { exclude: ['password'] }
       }],
       limit: parseInt(limit),
@@ -55,6 +45,9 @@ export const getTeachers = async (req, res, next) => {
   }
 };
 
+// @desc    Get single teacher
+// @route   GET /api/teachers/:id
+// @access  Private
 export const getTeacher = async (req, res, next) => {
   try {
     const teacher = await Teacher.findByPk(req.params.id, {
@@ -78,22 +71,20 @@ export const getTeacher = async (req, res, next) => {
   }
 };
 
+// @desc    Create new teacher
+// @route   POST /api/teachers
+// @access  Private (Admin)
 export const createTeacher = async (req, res, next) => {
   try {
     const { userData, teacherData } = req.body;
 
     // Validate required fields
-    if (!userData) {
-      return next(new ErrorResponse('User data is required', 400));
-    }
-    if (!userData.email) {
-      return next(new ErrorResponse('Email is required', 400));
-    }
-    if (!userData.name) {
-      return next(new ErrorResponse('Name is required', 400));
-    }
     if (!teacherData) {
       return next(new ErrorResponse('Teacher data is required', 400));
+    }
+    // Check name in userData (from frontend)
+    if (!userData || !userData.name) {
+      return next(new ErrorResponse('Name is required', 400));
     }
     if (!teacherData.dateOfBirth) {
       return next(new ErrorResponse('Date of birth is required', 400));
@@ -108,38 +99,40 @@ export const createTeacher = async (req, res, next) => {
       return next(new ErrorResponse('Joining date is required', 400));
     }
 
-    // Check if user exists
-    const userExists = await User.findOne({ where: { email: userData.email } });
-    if (userExists) {
+    // Create User record for the teacher so they can login
+    const email = userData.email;
+    const password = userData.password || 'teacher123'; // Default password if not provided
+    
+    // Check if user already exists with this email
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
       return next(new ErrorResponse('User already exists with this email', 400));
     }
 
-    // Generate username from name or email if not provided
-    const baseUsername = userData.username || 
-      (userData.name ? userData.name.toLowerCase().replace(/\s+/g, '.') : null) ||
-      userData.email.split('@')[0];
-
-    // Generate unique username
-    const username = await generateUniqueUsername(baseUsername || 'teacher');
-
-    // Create user with default password if not provided
-    const password = userData.password || 'teacher123';
-
-    // Create user
+    // Create user with role 'teacher'
     const user = await User.create({
-      ...userData,
-      username,
-      password,
-      role: 'teacher'
+      username: userData.name,
+      email: email,
+      password: password,
+      role: 'teacher',
+      name: userData.name
     });
 
-    // Create teacher
+    // Store name, email, phone, address directly in teacher table
+    let finalTeacherData = { ...teacherData };
+    finalTeacherData.name = userData.name;
+    finalTeacherData.email = userData.email;
+    finalTeacherData.phone = userData.phone;
+    finalTeacherData.address = userData.address;
+
+    // Create teacher with link to user
     const teacher = await Teacher.create({
-      ...teacherData,
+      ...finalTeacherData,
       userId: user.id,
       teacherId: `TCH${Date.now()}`
     });
 
+    // Fetch complete teacher with associations
     const completeTeacher = await Teacher.findByPk(teacher.id, {
       include: [{ 
         model: User, 
@@ -158,6 +151,9 @@ export const createTeacher = async (req, res, next) => {
   }
 };
 
+// @desc    Update teacher
+// @route   PUT /api/teachers/:id
+// @access  Private (Admin)
 export const updateTeacher = async (req, res, next) => {
   try {
     const teacher = await Teacher.findByPk(req.params.id);
@@ -166,18 +162,7 @@ export const updateTeacher = async (req, res, next) => {
       return next(new ErrorResponse('Teacher not found', 404));
     }
 
-    const { userData, teacherData } = req.body;
-
-    if (userData) {
-      const user = await User.findByPk(teacher.userId);
-      // Generate username if not provided but name is being updated
-      if (!userData.username && userData.name) {
-        userData.username = await generateUniqueUsername(
-          userData.name.toLowerCase().replace(/\s+/g, '.')
-        );
-      }
-      await user.update(userData);
-    }
+    const { teacherData } = req.body;
 
     if (teacherData) {
       await teacher.update(teacherData);
@@ -200,6 +185,9 @@ export const updateTeacher = async (req, res, next) => {
   }
 };
 
+// @desc    Delete teacher
+// @route   DELETE /api/teachers/:id
+// @access  Private (Admin)
 export const deleteTeacher = async (req, res, next) => {
   try {
     const teacher = await Teacher.findByPk(req.params.id);
@@ -208,7 +196,12 @@ export const deleteTeacher = async (req, res, next) => {
       return next(new ErrorResponse('Teacher not found', 404));
     }
 
-    await User.destroy({ where: { id: teacher.userId } });
+    // Only delete the associated User if it exists and teacher has userId
+    if (teacher.userId) {
+      await User.destroy({ where: { id: teacher.userId } });
+    }
+
+    await teacher.destroy();
 
     res.status(200).json({
       success: true,

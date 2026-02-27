@@ -1,12 +1,22 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+// ============================================
+// UPDATED STUDENTLIST - PROPER ERROR HANDLING
+// File: frontend/src/pages/StudentList.jsx - UPDATE ERROR HANDLING ONLY
+// ============================================
+
+// Update only the error handling parts of your StudentList.jsx:
+
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { studentsAPI } from '../services/api';
 import { toast } from 'react-toastify';
-import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react';
+import { Plus, Search, Edit, Trash2 } from 'lucide-react';
 import StudentFormModal from '../components/StudentFormModal';
+import { handleError, debounce } from '../utils/errorHandler';  // ← UPDATED IMPORT
+import { useAuth } from '../contexts/AuthContext';
 
 const StudentList = () => {
   const [students, setStudents] = useState([]);
+  const { user } = useAuth();
+  
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -14,28 +24,47 @@ const StudentList = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
 
-  useEffect(() => {
-    fetchStudents();
-  }, [currentPage, searchTerm]);
-
-  const fetchStudents = async () => {
+  // ✅ FIXED: Simplified fetch with automatic error handling
+  const fetchStudents = useCallback(async (page = currentPage, search = searchTerm) => {
     try {
       setLoading(true);
       const response = await studentsAPI.getAll({
-        page: currentPage,
+        page: page,
         limit: 10,
-        search: searchTerm
+        search: search
       });
-      setStudents(response.data);
-      setTotalPages(response.totalPages);
+      
+      const studentsData = response?.data || [];
+      setStudents(studentsData);
+      setTotalPages(response?.totalPages || 1);
     } catch (error) {
-      toast.error('Failed to fetch students');
-      console.error(error);
+      // ✅ ONE line - handles everything (message + toast + deduplication)
+      handleError(error, 'Failed to load students');
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // Debounced search
+  const debouncedSearch = useMemo(
+    () => debounce((value) => {
+      setCurrentPage(1);
+      fetchStudents(1, value);
+    }, 500),
+    [fetchStudents]
+  );
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    debouncedSearch(value);
   };
 
+  useEffect(() => {
+    fetchStudents(currentPage, searchTerm);
+  }, [currentPage]);
+
+  // ✅ FIXED: Simplified delete with automatic error handling
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this student?')) {
       return;
@@ -46,11 +75,12 @@ const StudentList = () => {
       toast.success('Student deleted successfully');
       fetchStudents();
     } catch (error) {
-      toast.error('Failed to delete student');
-      console.error(error);
+      // ✅ ONE line - handles everything
+      handleError(error, 'Failed to delete student');
     }
   };
 
+  // Rest of your component remains the same...
   const handleAddClick = () => {
     setSelectedStudent(null);
     setShowModal(true);
@@ -75,13 +105,16 @@ const StudentList = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Students</h1>
-        <button
-          onClick={handleAddClick}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-        >
-          <Plus size={20} />
-          <span>Add Student</span>
-        </button>
+        
+        {user?.role === 'admin' && (
+          <button
+            onClick={handleAddClick}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          >
+            <Plus size={20} />
+            <span>Add Student</span>
+          </button>
+        )}
       </div>
 
       {/* Search Bar */}
@@ -92,7 +125,7 @@ const StudentList = () => {
             type="text"
             placeholder="Search by name or email..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={handleSearchChange}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -125,9 +158,11 @@ const StudentList = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Grade & Section
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  {user?.role === 'admin' && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -137,15 +172,15 @@ const StudentList = () => {
                       <div className="flex items-center">
                         <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
                           <span className="text-blue-600 font-semibold">
-                            {student.user?.name?.charAt(0).toUpperCase()}
+                            {(student.name || student.user?.name)?.charAt(0).toUpperCase()}
                           </span>
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
-                            {student.user?.name}
+                            {student.name || student.user?.name || 'N/A'}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {student.user?.email}
+                            {student.email || student.user?.email || 'N/A'}
                           </div>
                         </div>
                       </div>
@@ -160,28 +195,24 @@ const StudentList = () => {
                       {student.gradeLevel ? `Grade ${student.gradeLevel}` : '-'}
                       {student.class?.section ? ` - ${student.class.section}` : ''}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center gap-2">
-                        <Link
-                          to={`/students/${student.id}`}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <Eye size={18} />
-                        </Link>
-                        <button
-                          onClick={() => handleEditClick(student)}
-                          className="text-green-600 hover:text-green-800"
-                        >
-                          <Edit size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(student.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </td>
+                    {user?.role === 'admin' && (
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEditClick(student)}
+                            className="text-green-600 hover:text-green-800"
+                          >
+                            <Edit size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(student.id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

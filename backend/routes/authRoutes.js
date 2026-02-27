@@ -5,7 +5,8 @@ import {
   login,
   getMe,
   updateDetails,
-  updatePassword
+  updatePassword,
+  validateToken
 } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 import validate from '../middleware/validate.js';
@@ -35,6 +36,7 @@ const updatePasswordValidation = [
 router.post('/register', registerValidation, validate, register);
 router.post('/login', loginValidation, validate, login);
 router.get('/me', protect, getMe);
+router.get('/validate', protect, validateToken);
 router.put('/updatedetails', protect, updateDetails);
 router.put('/updatepassword', protect, updatePasswordValidation, validate, updatePassword);
 

@@ -3,15 +3,21 @@ import { announcementsAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import { Plus, Search, Edit, Trash2, Calendar, Megaphone } from 'lucide-react';
 import AnnouncementFormModal from '../components/AnnouncementFormModal';
+import { handleError } from '../utils/errorHandler';
+import { useAuth } from '../contexts/AuthContext';
 
 const AnnouncementList = () => {
   const [announcements, setAnnouncements] = useState([]);
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
+
+  // Only show Add/Edit buttons for Admin
+  const canEdit = user?.role === 'admin';
 
   useEffect(() => {
     fetchAnnouncements();
@@ -24,7 +30,7 @@ const AnnouncementList = () => {
       setAnnouncements(response.data);
       setTotalPages(response.totalPages);
     } catch (error) {
-      toast.error('Failed to fetch announcements');
+      handleError(error, 'Failed to fetch announcements');
     } finally {
       setLoading(false);
     }
@@ -37,7 +43,7 @@ const AnnouncementList = () => {
       toast.success('Announcement deleted');
       fetchAnnouncements();
     } catch (error) {
-      toast.error('Failed to delete announcement');
+      handleError(error, 'Failed to delete announcement');
     }
   };
 
@@ -54,10 +60,14 @@ const AnnouncementList = () => {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Announcements</h1>
-        <button onClick={() => { setSelectedAnnouncement(null); setShowModal(true); }}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-          <Plus size={20} />Add Announcement
-        </button>
+        
+        {/* Only show Add button for Admin */}
+        {canEdit && (
+          <button onClick={() => { setSelectedAnnouncement(null); setShowModal(true); }}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+            <Plus size={20} />Add Announcement
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow p-4 mb-6">
@@ -82,7 +92,9 @@ const AnnouncementList = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Audience</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Published</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  {canEdit && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -115,16 +127,18 @@ const AnnouncementList = () => {
                         <span className="text-sm">{new Date(item.publishDate).toLocaleDateString()}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        <button onClick={() => { setSelectedAnnouncement(item); setShowModal(true); }}>
-                          <Edit size={18} className="text-green-600" />
-                        </button>
-                        <button onClick={() => handleDelete(item.id)}>
-                          <Trash2 size={18} className="text-red-600" />
-                        </button>
-                      </div>
-                    </td>
+                    {canEdit && (
+                      <td className="px-6 py-4">
+                        <div className="flex gap-2">
+                          <button onClick={() => { setSelectedAnnouncement(item); setShowModal(true); }}>
+                            <Edit size={18} className="text-green-600" />
+                          </button>
+                          <button onClick={() => handleDelete(item.id)}>
+                            <Trash2 size={18} className="text-red-600" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

@@ -3,15 +3,21 @@ import { eventsAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import { Plus, Search, Edit, Trash2, Calendar, MapPin } from 'lucide-react';
 import EventFormModal from '../components/EventFormModal';
+import { handleError } from '../utils/errorHandler';
+import { useAuth } from '../contexts/AuthContext';
 
 const EventList = () => {
   const [events, setEvents] = useState([]);
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
+
+  // Only show Add/Edit buttons for Admin
+  const canEdit = user?.role === 'admin';
 
   useEffect(() => {
     fetchEvents();
@@ -24,7 +30,7 @@ const EventList = () => {
       setEvents(response.data || []);
       setTotalPages(response.totalPages || 1);
     } catch (error) {
-      toast.error('Failed to fetch events');
+      handleError(error, 'Failed to fetch events');
     } finally {
       setLoading(false);
     }
@@ -37,7 +43,7 @@ const EventList = () => {
       toast.success('Event deleted');
       fetchEvents();
     } catch (error) {
-      toast.error('Failed to delete event');
+      handleError(error, 'Failed to delete event');
     }
   };
 
@@ -56,10 +62,14 @@ const EventList = () => {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Events</h1>
-        <button onClick={() => { setSelectedEvent(null); setShowModal(true); }}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-          <Plus size={20} />Add Event
-        </button>
+        
+        {/* Only show Add button for Admin */}
+        {canEdit && (
+          <button onClick={() => { setSelectedEvent(null); setShowModal(true); }}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+            <Plus size={20} />Add Event
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow p-4 mb-6">
@@ -84,7 +94,9 @@ const EventList = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date Range</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  {canEdit && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -113,16 +125,18 @@ const EventList = () => {
                         <span className="text-sm">{item.location || 'TBA'}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        <button onClick={() => { setSelectedEvent(item); setShowModal(true); }}>
-                          <Edit size={18} className="text-green-600" />
-                        </button>
-                        <button onClick={() => handleDelete(item.id)}>
-                          <Trash2 size={18} className="text-red-600" />
-                        </button>
-                      </div>
-                    </td>
+                    {canEdit && (
+                      <td className="px-6 py-4">
+                        <div className="flex gap-2">
+                          <button onClick={() => { setSelectedEvent(item); setShowModal(true); }}>
+                            <Edit size={18} className="text-green-600" />
+                          </button>
+                          <button onClick={() => handleDelete(item.id)}>
+                            <Trash2 size={18} className="text-red-600" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

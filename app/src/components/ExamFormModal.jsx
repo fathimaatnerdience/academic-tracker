@@ -148,7 +148,7 @@ const ExamFormModal = ({ isOpen, onClose, onSuccess, exam = null }) => {
               >
                 <option value="">Select Teacher</option>
                 {teachers.map(t => (
-                  <option key={t.id} value={t.id}>{t.user?.name}</option>
+                  <option key={t.id} value={t.id}>{t.user?.name || t.name}</option>
                 ))}
               </select>
             </div>
