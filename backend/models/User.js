@@ -11,7 +11,7 @@ const User = sequelize.define('User', {
   username: {
     type: DataTypes.STRING(50),
     allowNull: false,
-    unique: false, // Removed unique constraint to prevent index creation
+    unique: false,
     validate: {
       len: [3, 50]
     }
@@ -19,7 +19,7 @@ const User = sequelize.define('User', {
   email: {
     type: DataTypes.STRING(100),
     allowNull: false,
-    unique: false, // Removed unique constraint to prevent index creation
+    unique: false,
     validate: {
       isEmail: true
     }
@@ -39,14 +39,6 @@ const User = sequelize.define('User', {
   name: {
     type: DataTypes.STRING(100),
     allowNull: false
-  },
-  phone: {
-    type: DataTypes.STRING(20),
-    allowNull: true
-  },
-  address: {
-    type: DataTypes.TEXT,
-    allowNull: true
   },
   avatar: {
     type: DataTypes.STRING,

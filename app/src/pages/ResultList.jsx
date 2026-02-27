@@ -3,14 +3,20 @@ import { resultsAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import { Plus, Search, Edit, Trash2, Award } from 'lucide-react';
 import ResultFormModal from '../components/ResultFormModal';
+import { handleError } from '../utils/errorHandler';
+import { useAuth } from '../contexts/AuthContext';
 
 const ResultList = () => {
   const [results, setResults] = useState([]);
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [selectedResult, setSelectedResult] = useState(null);
+
+  // Show Add/Edit buttons for Admin and Teacher
+  const canEdit = user?.role === 'admin' || user?.role === 'teacher';
 
   useEffect(() => {
     fetchResults();
@@ -23,7 +29,7 @@ const ResultList = () => {
       setResults(response.data);
       setTotalPages(response.totalPages);
     } catch (error) {
-      toast.error('Failed to fetch results');
+      handleError(error, 'Failed to fetch results');
     } finally {
       setLoading(false);
     }
@@ -36,7 +42,7 @@ const ResultList = () => {
       toast.success('Result deleted');
       fetchResults();
     } catch (error) {
-      toast.error('Failed to delete result');
+      handleError(error, 'Failed to delete result');
     }
   };
 
@@ -52,10 +58,14 @@ const ResultList = () => {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Results</h1>
-        <button onClick={() => { setSelectedResult(null); setShowModal(true); }}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-          <Plus size={20} />Add Result
-        </button>
+        
+        {/* Show Add button for Admin and Teacher */}
+        {canEdit && (
+          <button onClick={() => { setSelectedResult(null); setShowModal(true); }}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+            <Plus size={20} />Add Result
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow">
@@ -73,7 +83,9 @@ const ResultList = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Marks</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Percentage</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grade</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  {canEdit && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -102,16 +114,18 @@ const ResultList = () => {
                         {item.grade}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        <button onClick={() => { setSelectedResult(item); setShowModal(true); }}>
-                          <Edit size={18} className="text-green-600" />
-                        </button>
-                        <button onClick={() => handleDelete(item.id)}>
-                          <Trash2 size={18} className="text-red-600" />
-                        </button>
-                      </div>
-                    </td>
+                    {canEdit && (
+                      <td className="px-6 py-4">
+                        <div className="flex gap-2">
+                          <button onClick={() => { setSelectedResult(item); setShowModal(true); }}>
+                            <Edit size={18} className="text-green-600" />
+                          </button>
+                          <button onClick={() => handleDelete(item.id)}>
+                            <Trash2 size={18} className="text-red-600" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

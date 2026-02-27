@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
@@ -7,298 +7,176 @@ import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
-import { Users, BookOpen, Calendar as CalendarIcon, GraduationCap, TrendingUp } from 'lucide-react';
+import { Users, BookOpen, GraduationCap, MoreHorizontal, Bell } from 'lucide-react';
 import AIChatbot from '../components/AIChatbot';
 
 const localizer = momentLocalizer(moment);
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const [stats, setStats] = useState({
-    totalStudents: 1234,
-    totalTeachers: 89,
-    totalClasses: 42,
-    totalSubjects: 18,
-    attendanceRate: 94.5,
-    maleStudents: 678,
-    femaleStudents: 556
-  });
-
-  const [events, setEvents] = useState([
-    {
-      id: 1,
-      title: 'Math Exam - Grade 10',
-      start: new Date(2024, 1, 25, 9, 0),
-      end: new Date(2024, 1, 25, 11, 0),
-      type: 'exam'
-    },
-    {
-      id: 2,
-      title: 'Science Fair',
-      start: new Date(2024, 1, 28, 10, 0),
-      end: new Date(2024, 1, 28, 15, 0),
-      type: 'event'
-    },
-    {
-      id: 3,
-      title: 'Parent-Teacher Meeting',
-      start: new Date(2024, 2, 5, 14, 0),
-      end: new Date(2024, 2, 5, 17, 0),
-      type: 'meeting'
-    }
-  ]);
-
-  // Attendance data for line chart
-  const attendanceData = [
-    { month: 'Jan', attendance: 92 },
-    { month: 'Feb', attendance: 94 },
-    { month: 'Mar', attendance: 91 },
-    { month: 'Apr', attendance: 95 },
-    { month: 'May', attendance: 93 },
-    { month: 'Jun', attendance: 96 }
-  ];
-
-  // Grade distribution for bar chart
-  const gradeData = [
-    { grade: 'Grade 1', students: 120 },
-    { grade: 'Grade 2', students: 135 },
-    { grade: 'Grade 3', students: 128 },
-    { grade: 'Grade 4', students: 142 },
-    { grade: 'Grade 5', students: 115 },
-    { grade: 'Grade 6', students: 138 },
-    { grade: 'Grade 7', students: 125 },
-    { grade: 'Grade 8', students: 131 }
-  ];
-
-  // Gender distribution for pie chart
-  const genderData = [
-    { name: 'Boys', value: stats.maleStudents, color: '#3B82F6' },
-    { name: 'Girls', value: stats.femaleStudents, color: '#EC4899' }
-  ];
-
-  // Subject performance
-  const subjectPerformance = [
-    { subject: 'Math', average: 85 },
-    { subject: 'Science', average: 88 },
-    { subject: 'English', average: 82 },
-    { subject: 'History', average: 79 },
-    { subject: 'Geography', average: 84 }
-  ];
-
-  const eventStyleGetter = (event) => {
-    const colors = {
-      exam: { backgroundColor: '#EF4444', color: 'white' },
-      event: { backgroundColor: '#3B82F6', color: 'white' },
-      meeting: { backgroundColor: '#10B981', color: 'white' }
-    };
-    return { style: colors[event.type] || {} };
+  
+  // Design Theme Colors
+  const theme = {
+    background: '#F1F3E9', // Soft Cream/Sage background
+    mint: '#99E9A1',       // Stat card green
+    pink: '#F9D1D9',       // Notice board pink
+    yellow: '#FEF9C3',     // Announcement yellow
+    bluePastel: '#A2D2DF', // Boys chart color
+    pinkPastel: '#F080A0', // Girls chart color
+    white: '#FFFFFF'
   };
 
+  const [stats] = useState({
+    totalStudents: 1218,
+    totalTeachers: 20,
+    totalParents: 1189,
+    maleStudents: 1234,
+    femaleStudents: 1134,
+    attendanceRate: 94.5
+  });
+
+  const [events] = useState([
+    { id: 1, title: 'Math Exam', start: new Date(2024, 1, 25, 9, 0), end: new Date(2024, 1, 25, 11, 0), type: 'exam' },
+    { id: 2, title: 'Science Fair', start: new Date(2024, 1, 28, 10, 0), end: new Date(2024, 1, 28, 15, 0), type: 'event' }
+  ]);
+
+  const genderData = [
+    { name: 'Boys', value: stats.maleStudents, color: theme.bluePastel },
+    { name: 'Girls', value: stats.femaleStudents, color: theme.pinkPastel }
+  ];
+
+  const attendanceData = [
+    { day: 'Mon', boys: 75, girls: 60 },
+    { day: 'Tue', boys: 75, girls: 60 },
+    { day: 'Wed', boys: 75, girls: 60 },
+    { day: 'Thu', boys: 75, girls: 60 },
+    { day: 'Fri', boys: 75, girls: 60 },
+  ];
+
+  const eventStyleGetter = (event) => ({
+    style: { backgroundColor: theme.bluePastel, borderRadius: '8px', border: 'none', color: '#1A363E' }
+  });
+
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen p-6 space-y-6" style={{ backgroundColor: theme.background }}>
       
-      {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg p-6 text-white">
-        <h1 className="text-3xl font-bold mb-2">
-          Welcome back, {user?.name}! 
-        </h1>
-        <p className="text-blue-100">
-          Here's what's happening in your school today
-        </p>
-      </div>
+      <div className="flex gap-6">
+        {/* Left Side: Stats and Charts */}
+        <div className="flex-[2] space-y-6">
+          
+          {/* Top Stat Cards */}
+          <div className="grid grid-cols-3 gap-4">
+            <StatCard title="Students" value={stats.totalStudents} color={theme.mint} icon={<Users size={20} />} />
+            <StatCard title="Teachers" value={stats.totalTeachers} color={theme.mint} icon={<GraduationCap size={20} />} />
+            <StatCard title="Parents" value={stats.totalParents} color={theme.mint} icon={<BookOpen size={20} />} />
+          </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        
-        <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm font-medium">Total Students</p>
-              <h3 className="text-3xl font-bold text-gray-800 mt-1">{stats.totalStudents}</h3>
-              <p className="text-green-600 text-sm mt-2 flex items-center gap-1">
-                <TrendingUp size={16} /> +5.2% from last month
-              </p>
+          {/* Charts Row */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Student Donut Chart */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm h-[400px]">
+              <h2 className="text-xl font-bold mb-4">Students</h2>
+              <ResponsiveContainer width="100%" height="80%">
+                <PieChart>
+                  <Pie data={genderData} innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value">
+                    {genderData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex justify-around mt-3 text-sm font-bold">
+                <div className="text-center">
+                  <div className="flex items-center gap-2 justify-center"><div className="w-3 h-3 rounded-full bg-[#A2D2DF]"></div><span>{stats.maleStudents.toLocaleString()}</span></div>
+                  <p className="text-gray-400 text-xs">Boys (55%)</p>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center gap-2 justify-center"><div className="w-3 h-3 rounded-full bg-[#F080A0]"></div><span>{stats.femaleStudents.toLocaleString()}</span></div>
+                  <p className="text-gray-400 text-xs">Girls (45%)</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-blue-100 p-4 rounded-lg">
-              <Users className="text-blue-600" size={32} />
+
+            {/* Attendance Bar Chart */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm h-[400px]">
+              <h2 className="text-xl font-bold mb-4">Attendance</h2>
+              <ResponsiveContainer width="100%" height="80%">
+                <BarChart data={attendanceData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                  <XAxis dataKey="day" axisLine={false} tickLine={false} />
+                  <YAxis axisLine={false} tickLine={false} />
+                  <Tooltip cursor={{fill: 'transparent'}} />
+                  <Legend iconType="circle" verticalAlign="top" align="left" wrapperStyle={{paddingBottom: '20px'}} />
+                  <Bar dataKey="girls" fill={theme.pinkPastel} radius={[4, 4, 0, 0]} barSize={15} />
+                  <Bar dataKey="boys" fill={theme.bluePastel} radius={[4, 4, 0, 0]} barSize={15} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Notice Board */}
+          <div className="rounded-2xl p-6 h-[400px] shadow-sm overflow-hidden" style={{ backgroundColor: theme.pink }}>
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Notice Board</h2>
+            <div className="space-y-4 opacity-60">
+               <p className="italic">Any general school-wide updates or important staff notices will appear here...</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-green-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm font-medium">Total Teachers</p>
-              <h3 className="text-3xl font-bold text-gray-800 mt-1">{stats.totalTeachers}</h3>
-              <p className="text-green-600 text-sm mt-2 flex items-center gap-1">
-                <TrendingUp size={16} /> +2 new this month
-              </p>
-            </div>
-            <div className="bg-green-100 p-4 rounded-lg">
-              <GraduationCap className="text-green-600" size={32} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-purple-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm font-medium">Total Classes</p>
-              <h3 className="text-3xl font-bold text-gray-800 mt-1">{stats.totalClasses}</h3>
-              <p className="text-gray-500 text-sm mt-2">Across all grades</p>
-            </div>
-            <div className="bg-purple-100 p-4 rounded-lg">
-              <BookOpen className="text-purple-600" size={32} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-yellow-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm font-medium">Attendance Rate</p>
-              <h3 className="text-3xl font-bold text-gray-800 mt-1">{stats.attendanceRate}%</h3>
-              <p className="text-green-600 text-sm mt-2">Above target of 90%</p>
-            </div>
-            <div className="bg-yellow-100 p-4 rounded-lg">
-              <CalendarIcon className="text-yellow-600" size={32} />
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Attendance Trend */}
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Attendance Trend</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={attendanceData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis domain={[80, 100]} />
-              <Tooltip />
-              <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="attendance" 
-                stroke="#3B82F6" 
-                strokeWidth={3}
-                dot={{ r: 5 }}
-                activeDot={{ r: 7 }}
+        {/* Right Side: Calendar and Announcements */}
+        <div className="flex-1 space-y-6">
+          {/* Calendar Area */}
+          <div className="bg-[#BFDCE5] rounded-2xl p-4 h-[450px] shadow-sm flex flex-col">
+            <h2 className="text-center text-gray-600 font-medium mb-2">Calendar</h2>
+            <div className="flex-1 overflow-hidden rounded-xl bg-white/40">
+              <Calendar
+                localizer={localizer}
+                events={events}
+                eventPropGetter={eventStyleGetter}
+                views={['month']}
+                toolbar={true}
               />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Gender Distribution */}
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Student Gender Distribution</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={genderData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
-                outerRadius={100}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {genderData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="flex justify-center gap-6 mt-4">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-blue-500"></div>
-              <span className="text-sm text-gray-600">Boys: {stats.maleStudents}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-pink-500"></div>
-              <span className="text-sm text-gray-600">Girls: {stats.femaleStudents}</span>
+          </div>
+
+          {/* Announcements Area */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm min-h-[500px]">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Announcements</h2>
+            <div className="space-y-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="p-4 rounded-xl border border-yellow-100" style={{ backgroundColor: theme.yellow }}>
+                  <h3 className="font-bold text-gray-800">Grade-1 Test Paper</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    The test scheduled for 2nd March has been cancelled. A new date will be announced soon.
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
-
       </div>
-
-      {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Students by Grade */}
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Students by Grade</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={gradeData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="grade" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="students" fill="#10B981" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Subject Performance */}
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Average Performance by Subject</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={subjectPerformance} layout="horizontal">
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" domain={[0, 100]} />
-              <YAxis dataKey="subject" type="category" />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="average" fill="#8B5CF6" radius={[0, 8, 8, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-      </div>
-
-      {/* Calendar */}
-      <div className="bg-white rounded-xl shadow-md p-6">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">School Calendar</h2>
-        <div style={{ height: '600px' }}>
-          <Calendar
-            localizer={localizer}
-            events={events}
-            startAccessor="start"
-            endAccessor="end"
-            style={{ height: '100%' }}
-            eventPropGetter={eventStyleGetter}
-            views={['month', 'week', 'day']}
-            defaultView="month"
-          />
-        </div>
-        <div className="flex gap-4 mt-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-red-500"></div>
-            <span className="text-sm text-gray-600">Exams</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-blue-500"></div>
-            <span className="text-sm text-gray-600">Events</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-green-500"></div>
-            <span className="text-sm text-gray-600">Meetings</span>
-          </div>
-        </div>
-      </div>
-
       <AIChatbot />
 
     </div>
+    
   );
 };
+
+/* Helper Component for Stat Cards to match design */
+const StatCard = ({ title, value, color, icon }) => (
+  <div 
+    className="p-6 rounded-2xl shadow-sm transition-all hover:scale-[1.02] cursor-pointer relative overflow-hidden"
+    style={{ backgroundColor: color }}
+  >
+    <div className="flex justify-between items-start">
+      <div>
+        <span className="bg-white/40 text-[10px] px-2 py-0.5 rounded-full font-bold">2025/26</span>
+        <h3 className="text-3xl font-bold text-gray-800 mt-3">{value}</h3>
+        <p className="text-gray-700 font-medium">{title}</p>
+      </div>
+      <MoreHorizontal className="text-gray-600" size={20} />
+    </div>
+  </div>
+  
+);
 
 export default Dashboard;

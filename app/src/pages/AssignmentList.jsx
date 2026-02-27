@@ -3,15 +3,21 @@ import { assignmentsAPI, subjectsAPI, classesAPI, teachersAPI } from '../service
 import { toast } from 'react-toastify';
 import { Plus, Search, Edit, Trash2, Calendar, FileText } from 'lucide-react';
 import AssignmentFormModal from '../components/AssignmentFormModal';
+import { handleError } from '../utils/errorHandler';
+import { useAuth } from '../contexts/AuthContext';
 
 const AssignmentList = () => {
   const [assignments, setAssignments] = useState([]);
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
+
+  // Show Add/Edit buttons for Admin and Teacher
+  const canEdit = user?.role === 'admin' || user?.role === 'teacher';
 
   useEffect(() => {
     fetchAssignments();
@@ -28,7 +34,7 @@ const AssignmentList = () => {
       setAssignments(response.data || []);
       setTotalPages(response.totalPages || 1);
     } catch (error) {
-      toast.error('Failed to fetch assignments');
+      handleError(error, 'Failed to fetch assignments');
     } finally {
       setLoading(false);
     }
@@ -41,7 +47,7 @@ const AssignmentList = () => {
       toast.success('Assignment deleted');
       fetchAssignments();
     } catch (error) {
-      toast.error('Failed to delete assignment');
+      handleError(error, 'Failed to delete assignment');
     }
   };
 
@@ -49,13 +55,17 @@ const AssignmentList = () => {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Assignments</h1>
-        <button
-          onClick={() => { setSelectedAssignment(null); setShowModal(true); }}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-        >
-          <Plus size={20} />
-          Add Assignment
-        </button>
+        
+        {/* Show Add button for Admin and Teacher */}
+        {canEdit && (
+          <button
+            onClick={() => { setSelectedAssignment(null); setShowModal(true); }}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          >
+            <Plus size={20} />
+            Add Assignment
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow p-4 mb-6">
@@ -83,10 +93,13 @@ const AssignmentList = () => {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assignment</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teacher</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Marks</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  {canEdit && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -97,13 +110,11 @@ const AssignmentList = () => {
                         <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
                           <FileText className="text-purple-600" size={20} />
                         </div>
-                        <div>
-                          <div className="font-medium">{assignment.title}</div>
-                          <div className="text-sm text-gray-500">{assignment.teacher?.user?.name}</div>
-                        </div>
+                        <div className="font-medium">{assignment.title}</div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm">{assignment.subject?.name}</td>
+                    <td className="px-6 py-4 text-sm">{assignment.subject?.subjectName}</td>
+                    <td className="px-6 py-4 text-sm">{assignment.teacher?.name || assignment.teacher?.user?.name || 'N/A'}</td>
                     <td className="px-6 py-4 text-sm">{assignment.class?.name}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
@@ -112,16 +123,18 @@ const AssignmentList = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm">{assignment.totalMarks}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        <button onClick={() => { setSelectedAssignment(assignment); setShowModal(true); }}>
-                          <Edit size={18} className="text-green-600" />
-                        </button>
-                        <button onClick={() => handleDelete(assignment.id)}>
-                          <Trash2 size={18} className="text-red-600" />
-                        </button>
-                      </div>
-                    </td>
+                    {canEdit && (
+                      <td className="px-6 py-4">
+                        <div className="flex gap-2">
+                          <button onClick={() => { setSelectedAssignment(assignment); setShowModal(true); }}>
+                            <Edit size={18} className="text-green-600" />
+                          </button>
+                          <button onClick={() => handleDelete(assignment.id)}>
+                            <Trash2 size={18} className="text-red-600" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

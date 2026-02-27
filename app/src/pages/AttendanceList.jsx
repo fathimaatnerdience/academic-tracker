@@ -3,14 +3,20 @@ import { attendanceAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import { Plus, Search, Edit, Trash2, Calendar, CheckCircle, XCircle, Clock } from 'lucide-react';
 import AttendanceFormModal from '../components/AttendanceFormModal';
+import { handleError } from '../utils/errorHandler';
+import { useAuth } from '../contexts/AuthContext';
 
 const AttendanceList = () => {
   const [attendances, setAttendances] = useState([]);
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [selectedAttendance, setSelectedAttendance] = useState(null);
+
+  // Show Add/Edit buttons for Admin and Teacher
+  const canEdit = user?.role === 'admin' || user?.role === 'teacher';
 
   useEffect(() => {
     fetchAttendances();
@@ -23,7 +29,7 @@ const AttendanceList = () => {
       setAttendances(response.data);
       setTotalPages(response.totalPages);
     } catch (error) {
-      toast.error('Failed to fetch attendance');
+      handleError(error, 'Failed to fetch attendance');
     } finally {
       setLoading(false);
     }
@@ -36,7 +42,7 @@ const AttendanceList = () => {
       toast.success('Attendance deleted');
       fetchAttendances();
     } catch (error) {
-      toast.error('Failed to delete attendance');
+      handleError(error, 'Failed to delete attendance');
     }
   };
 
@@ -62,10 +68,14 @@ const AttendanceList = () => {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Attendance</h1>
-        <button onClick={() => { setSelectedAttendance(null); setShowModal(true); }}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-          <Plus size={20} />Mark Attendance
-        </button>
+        
+        {/* Show Add button for Admin and Teacher */}
+        {canEdit && (
+          <button onClick={() => { setSelectedAttendance(null); setShowModal(true); }}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+            <Plus size={20} />Mark Attendance
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow">
@@ -79,10 +89,12 @@ const AttendanceList = () => {
               <thead className="bg-gray-50 border-b">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lesson</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  {canEdit && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -98,7 +110,7 @@ const AttendanceList = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      {item.lesson?.subject?.name} - {item.lesson?.class?.name}
+                      {item.subject?.subjectName || 'N/A'}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
@@ -111,16 +123,18 @@ const AttendanceList = () => {
                         {item.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        <button onClick={() => { setSelectedAttendance(item); setShowModal(true); }}>
-                          <Edit size={18} className="text-green-600" />
-                        </button>
-                        <button onClick={() => handleDelete(item.id)}>
-                          <Trash2 size={18} className="text-red-600" />
-                        </button>
-                      </div>
-                    </td>
+                    {canEdit && (
+                      <td className="px-6 py-4">
+                        <div className="flex gap-2">
+                          <button onClick={() => { setSelectedAttendance(item); setShowModal(true); }}>
+                            <Edit size={18} className="text-green-600" />
+                          </button>
+                          <button onClick={() => handleDelete(item.id)}>
+                            <Trash2 size={18} className="text-red-600" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

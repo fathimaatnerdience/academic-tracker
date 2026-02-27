@@ -49,10 +49,10 @@ const TeacherFormModal = ({ isOpen, onClose, onSuccess, teacher = null }) => {
       } else {
         // Editing existing teacher - populate form
         setFormData({
-          name: teacher.user?.name || '',
-          email: teacher.user?.email || '',
-          phone: teacher.user?.phone || '',
-          address: teacher.user?.address || '',
+          name: teacher.name || teacher.user?.name || '',
+          email: teacher.email || teacher.user?.email || '',
+          phone: teacher.phone || teacher.user?.phone || '',
+          address: teacher.address || teacher.user?.address || '',
           dateOfBirth: teacher.dateOfBirth || '',
           gender: teacher.gender || '',
           qualification: teacher.qualification || '',

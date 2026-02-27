@@ -17,7 +17,7 @@ const generateToken = (id) => {
 // @access  Public
 export const register = async (req, res, next) => {
   try {
-    const { username, email, password, role, name, phone, address } = req.body;
+    const { username, email, password, role, name } = req.body;
 
     // Check if user exists
     const userExists = await User.findOne({ where: { email } });
@@ -31,31 +31,11 @@ export const register = async (req, res, next) => {
       email,
       password,
       role,
-      name,
-      phone,
-      address
+      name
     });
 
-    // Create profile based on role
-    if (role === 'student') {
-      await Student.create({
-        userId: user.id,
-        studentId: `STU${Date.now()}`,
-        ...req.body.studentData
-      });
-    } else if (role === 'teacher') {
-      await Teacher.create({
-        userId: user.id,
-        teacherId: `TCH${Date.now()}`,
-        ...req.body.teacherData
-      });
-    } else if (role === 'parent') {
-      await Parent.create({
-        userId: user.id,
-        parentId: `PAR${Date.now()}`,
-        ...req.body.parentData
-      });
-    }
+    // Note: Teacher/Student/Parent profiles are created separately by admin 
+    // through the respective form modals, not during user registration
 
     // Generate token
     const token = generateToken(user.id);
@@ -156,9 +136,7 @@ export const updateDetails = async (req, res, next) => {
   try {
     const fieldsToUpdate = {
       name: req.body.name,
-      email: req.body.email,
-      phone: req.body.phone,
-      address: req.body.address
+      email: req.body.email
     };
 
     const user = await User.findByPk(req.user.id);
@@ -202,10 +180,29 @@ export const updatePassword = async (req, res, next) => {
   }
 };
 
+// @desc    Validate token
+// @route   GET /api/auth/validate
+// @access  Private
+export const validateToken = async (req, res, next) => {
+  try {
+    // If we reach here, the token is valid (protect middleware verified it)
+    res.status(200).json({
+      success: true,
+      message: 'Token is valid',
+      data: {
+        user: req.user
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   register,
   login,
   getMe,
   updateDetails,
-  updatePassword
+  updatePassword,
+  validateToken
 };

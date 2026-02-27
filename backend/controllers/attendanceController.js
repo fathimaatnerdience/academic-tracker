@@ -1,4 +1,4 @@
-import { Attendance, Student, Lesson, User } from '../models/index.js';
+import { Attendance, Student, Lesson, Subject, User } from '../models/index.js';
 import { Op } from 'sequelize';
 
 export const getAttendances = async (req, res) => {
@@ -15,16 +15,22 @@ export const getAttendances = async (req, res) => {
       where,
       include: [
         { model: Student, as: 'student', include: [{ model: User, as: 'user' }] },
-        { model: Lesson, as: 'lesson' }
+        { model: Lesson, as: 'lesson', include: [{ model: Subject, as: 'subject' }] }
       ],
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [['date', 'DESC'], ['createdAt', 'DESC']]
     });
 
+    // Map to include subject directly
+    const data = rows.map(item => ({
+      ...item.toJSON(),
+      subject: item.lesson?.subject
+    }));
+
     res.status(200).json({
       success: true,
-      data: rows,
+      data: data,
       currentPage: parseInt(page),
       totalPages: Math.ceil(count / limit),
       totalItems: count
@@ -39,13 +45,19 @@ export const getAttendance = async (req, res) => {
     const attendance = await Attendance.findByPk(req.params.id, {
       include: [
         { model: Student, as: 'student' },
-        { model: Lesson, as: 'lesson' }
+        { model: Lesson, as: 'lesson', include: [{ model: Subject, as: 'subject' }] }
       ]
     });
     if (!attendance) {
       return res.status(404).json({ success: false, message: 'Attendance not found' });
     }
-    res.status(200).json({ success: true, data: attendance });
+    
+    const data = {
+      ...attendance.toJSON(),
+      subject: attendance.lesson?.subject
+    };
+    
+    res.status(200).json({ success: true, data: data });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

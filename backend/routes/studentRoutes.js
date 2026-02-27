@@ -15,7 +15,7 @@ router.use(protect);
 
 router
   .route('/')
-  .get(authorize('admin', 'teacher'), getStudents)
+  .get(authorize('admin', 'teacher', 'student', 'parent'), getStudents)
   .post(authorize('admin'), createStudent);
 
 router

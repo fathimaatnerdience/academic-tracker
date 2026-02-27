@@ -6,6 +6,7 @@ import { parentsAPI, studentsAPI } from '../services/api';
 const ParentFormModal = ({ isOpen, onClose, onSuccess, parent = null }) => {
   const [loading, setLoading] = useState(false);
   const [students, setStudents] = useState([]);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -18,46 +19,63 @@ const ParentFormModal = ({ isOpen, onClose, onSuccess, parent = null }) => {
     studentIds: []
   });
 
+  // Fetch students when modal opens
   useEffect(() => {
-    fetchStudents();
-  }, []);
+    if (isOpen) {
+      fetchStudents();
+    }
+  }, [isOpen]);
 
+  // Populate form when parent data changes or modal opens
   useEffect(() => {
-    if (parent) {
-      setFormData({
-        name: parent.user?.name || '',
-        email: parent.user?.email || '',
-        username: parent.user?.username || '',
-        password: '', // Don't populate password on edit
-        phone: parent.phone || '',
-        address: parent.address || '',
-        occupation: parent.occupation || '',
-        relationship: parent.relationship || 'father',
-        studentIds: parent.students?.map(s => s.id) || []
-      });
-    } else {
-      // Reset form for new parent
-      setFormData({
-        name: '',
-        email: '',
-        username: '',
-        password: '',
-        phone: '',
-        address: '',
-        occupation: '',
-        relationship: 'father',
-        studentIds: []
-      });
+    if (isOpen) {
+      if (parent) {
+        // Editing existing parent - populate all fields
+        setFormData({
+          // Prefer direct parent fields, fall back to user fields
+          name: parent.name || parent.user?.name || '',
+          email: parent.email || parent.user?.email || '',
+          username: parent.user?.username || '',
+          password: '', // Never populate password when editing
+          phone: parent.phone || '',
+          address: parent.address || '',
+          occupation: parent.occupation || '',
+          relationship: parent.relationship || 'father',
+          // Handle student IDs - could be array of IDs or array of objects
+          studentIds: parent.students?.map(s => s.id) || []
+        });
+      } else {
+        // New parent - reset form
+        setFormData({
+          name: '',
+          email: '',
+          username: '',
+          password: '',
+          phone: '',
+          address: '',
+          occupation: '',
+          relationship: 'father',
+          studentIds: []
+        });
+      }
     }
   }, [parent, isOpen]);
 
   const fetchStudents = async () => {
     try {
       const response = await studentsAPI.getAll({ limit: 100 });
-      setStudents(response.data);
+      setStudents(response.data || []);
     } catch (error) {
-      console.error('Failed to fetch students');
+      console.error('Failed to fetch students:', error);
     }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -65,23 +83,50 @@ const ParentFormModal = ({ isOpen, onClose, onSuccess, parent = null }) => {
     setLoading(true);
 
     try {
+      // Prepare payload based on whether it's create or update
+      const payload = parent 
+        ? {
+            // For update: send parentData and studentIds
+            parentData: {
+              phone: formData.phone,
+              address: formData.address,
+              occupation: formData.occupation,
+              relationship: formData.relationship,
+              ...(formData.password && { password: formData.password })
+            },
+            studentIds: formData.studentIds
+          }
+        : {
+            // For create: send all fields
+            name: formData.name,
+            email: formData.email,
+            username: formData.username,
+            password: formData.password,
+            phone: formData.phone,
+            address: formData.address,
+            occupation: formData.occupation,
+            relationship: formData.relationship,
+            studentIds: formData.studentIds
+          };
+
       if (parent) {
-        // Update existing parent
-        await parentsAPI.update(parent.id, formData);
+        await parentsAPI.update(parent.id, payload);
         toast.success('Parent updated successfully!');
       } else {
-        // Create new parent
+        // Validate password for new parent
         if (!formData.password || formData.password.length < 6) {
           toast.error('Password must be at least 6 characters');
           setLoading(false);
           return;
         }
-        await parentsAPI.create(formData);
+        await parentsAPI.create(payload);
         toast.success('Parent created successfully!');
       }
+      
       onSuccess();
       onClose();
     } catch (error) {
+      console.error('Error saving parent:', error);
       toast.error(error.response?.data?.message || 'Failed to save parent');
     } finally {
       setLoading(false);
@@ -129,8 +174,9 @@ const ParentFormModal = ({ isOpen, onClose, onSuccess, parent = null }) => {
                 </label>
                 <input
                   type="text"
+                  name="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  onChange={handleChange}
                   required
                   placeholder="e.g., John Smith"
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
@@ -143,8 +189,9 @@ const ParentFormModal = ({ isOpen, onClose, onSuccess, parent = null }) => {
                 </label>
                 <input
                   type="email"
+                  name="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  onChange={handleChange}
                   required
                   placeholder="john.smith@email.com"
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
@@ -157,8 +204,9 @@ const ParentFormModal = ({ isOpen, onClose, onSuccess, parent = null }) => {
                 </label>
                 <input
                   type="text"
+                  name="username"
                   value={formData.username}
-                  onChange={(e) => setFormData({...formData, username: e.target.value})}
+                  onChange={handleChange}
                   required={!parent}
                   placeholder="johnsmith"
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
@@ -170,18 +218,42 @@ const ParentFormModal = ({ isOpen, onClose, onSuccess, parent = null }) => {
                   <label className="block text-sm font-semibold mb-1 text-gray-700">
                     Password *
                   </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      required
+                      minLength="6"
+                      placeholder="Minimum 6 characters"
+                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                    >
+                      {showPassword ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {parent && (
+                <div className="col-span-2">
+                  <label className="block text-sm font-semibold mb-1 text-gray-700">
+                    New Password (leave blank to keep current)
+                  </label>
                   <input
                     type="password"
+                    name="password"
                     value={formData.password}
-                    onChange={(e) => setFormData({...formData, password: e.target.value})}
-                    required
+                    onChange={handleChange}
                     minLength="6"
-                    placeholder="Minimum 6 characters"
+                    placeholder="Enter new password to change"
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Password must be at least 6 characters long
-                  </p>
                 </div>
               )}
 
@@ -191,8 +263,9 @@ const ParentFormModal = ({ isOpen, onClose, onSuccess, parent = null }) => {
                 </label>
                 <input
                   type="tel"
+                  name="phone"
                   value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  onChange={handleChange}
                   placeholder="(123) 456-7890"
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
@@ -203,8 +276,9 @@ const ParentFormModal = ({ isOpen, onClose, onSuccess, parent = null }) => {
                   Relationship *
                 </label>
                 <select
+                  name="relationship"
                   value={formData.relationship}
-                  onChange={(e) => setFormData({...formData, relationship: e.target.value})}
+                  onChange={handleChange}
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 >
                   <option value="father">Father</option>
@@ -220,8 +294,9 @@ const ParentFormModal = ({ isOpen, onClose, onSuccess, parent = null }) => {
                 </label>
                 <input
                   type="text"
+                  name="occupation"
                   value={formData.occupation}
-                  onChange={(e) => setFormData({...formData, occupation: e.target.value})}
+                  onChange={handleChange}
                   placeholder="e.g., Software Engineer"
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
@@ -232,8 +307,9 @@ const ParentFormModal = ({ isOpen, onClose, onSuccess, parent = null }) => {
                   Address
                 </label>
                 <textarea
+                  name="address"
                   value={formData.address}
-                  onChange={(e) => setFormData({...formData, address: e.target.value})}
+                  onChange={handleChange}
                   rows="2"
                   placeholder="Full address"
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
@@ -262,9 +338,11 @@ const ParentFormModal = ({ isOpen, onClose, onSuccess, parent = null }) => {
                         className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                       />
                       <div className="flex-1">
-                        <div className="font-medium text-gray-900">{student.user?.name}</div>
+                        <div className="font-medium text-gray-900">
+                          {student.name || student.user?.name || 'Unnamed Student'}
+                        </div>
                         <div className="text-sm text-gray-500">
-                          ID: {student.studentId} • Grade {student.gradeLevel}
+                          ID: {student.studentId || student.id} • Grade {student.gradeLevel}
                         </div>
                       </div>
                     </label>

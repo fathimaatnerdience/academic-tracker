@@ -23,6 +23,7 @@ import attendanceRoutes from './routes/attendanceRoutes.js';
 import eventRoutes from './routes/eventRoutes.js';
 import announcementRoutes from './routes/announcementRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
+import searchRoutes from './routes/searchRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -78,19 +79,7 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// Static Files
-app.use('/uploads', express.static('uploads'));
-
-// Health Check Route
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Academic Tracker API is running',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// API Routes
+// API Routes - MUST be defined BEFORE the 404 handler
 app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/teachers', teacherRoutes);
@@ -105,12 +94,13 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/search', searchRoutes);
 
-// 404 Handler
+// 404 Handler - Must be AFTER all API routes
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: 'Route not found'
+    message: 'The requested page or resource was not found.'
   });
 });
 
@@ -132,7 +122,7 @@ const startServer = async () => {
     await sequelize.authenticate();
     console.log('✅ Database connection established successfully');
 
-    // Sync ALL models with database (alter: true to add new columns)
+    // Sync ALL models with database (alter: false to avoid foreign key issues)
     await sequelize.sync({ alter: false, force: false });
     console.log('✅ Database models synchronized');
     
