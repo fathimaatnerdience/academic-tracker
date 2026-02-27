@@ -28,20 +28,21 @@ export const globalSearch = async (req, res, next) => {
       const students = await Student.findAll({
         where: {
           [Op.or]: [
+            { '$user.name$': { [Op.like]: `%${searchTerm}%` } },
             { name: { [Op.like]: `%${searchTerm}%` } },
             { email: { [Op.like]: `%${searchTerm}%` } },
             { studentId: { [Op.like]: `%${searchTerm}%` } }
           ]
         },
-        include: [{ model: Class, as: 'class' }],
+        include: [{ model: User, as: 'user' }, { model: Class, as: 'class' }],
         limit
       });
-      
+
       results.push(...students.map(s => ({
         type: 'student',
         id: s.id,
-        name: s.name,
-        email: s.email,
+        name: s.user?.name || s.name,
+        email: s.user?.email || s.email,
         additionalInfo: s.class?.name || 'No class'
       })));
     }
@@ -51,20 +52,22 @@ export const globalSearch = async (req, res, next) => {
       const teachers = await Teacher.findAll({
         where: {
           [Op.or]: [
+            { '$user.name$': { [Op.like]: `%${searchTerm}%` } },
             { name: { [Op.like]: `%${searchTerm}%` } },
             { email: { [Op.like]: `%${searchTerm}%` } },
-            { employeeId: { [Op.like]: `%${searchTerm}%` } }
+            { teacherId: { [Op.like]: `%${searchTerm}%` } }
           ]
         },
+        include: [{ model: User, as: 'user' }],
         limit
       });
-      
+
       results.push(...teachers.map(t => ({
         type: 'teacher',
         id: t.id,
-        name: t.name,
-        email: t.email,
-        additionalInfo: t.subject || 'No subject'
+        name: t.user?.name || t.name,
+        email: t.user?.email || t.email,
+        additionalInfo: t.specialization || 'No specialization'
       })));
     }
 
