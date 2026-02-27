@@ -20,8 +20,7 @@ const AIChatbot = () => {
   const [isAiHealthy, setIsAiHealthy] = useState(true);
   const messagesEndRef = useRef(null);
 
-  // Only show for admin and teacher
-  if (!user || (user.role !== 'admin' && user.role !== 'teacher')) {
+  if (!user) {
     return null;
   }
 
@@ -96,10 +95,28 @@ const AIChatbot = () => {
     }
   };
 
-  const quickActions = [
-    'Who is the best performing student?',
-    'Give me class performance analysis'
-  ];
+  // Role-specific quick questions
+  const getQuickActions = () => {
+    const role = user?.role;
+    if (role === 'student') {
+      return [
+        'What is my average score?',
+        'How is my attendance?',
+        'Which subjects do I need to improve?',
+        'What are my strong subjects?',
+        "Show my subject breakdown"
+      ];
+    }
+    // Admin and Teacher see class-wide questions
+    return [
+      'Who is the best performing student?',
+      'Give me class performance analysis',
+      "Which students need improvement?",
+      'What is the class attendance rate?'
+    ];
+  };
+
+  const quickActions = getQuickActions();
 
   const handleQuickAction = (action) => {
     setInputMessage(action);

@@ -11,12 +11,12 @@ const chatService = new AcademicChatService(models);
 /**
  * @route   POST /api/ai/chat
  * @desc    Send a message to the AI chatbot
- * @access  Private (Admin, Teacher only)
+ * @access  Private (Admin, Teacher, Student)
  */
-router.post('/chat', protect, authorize('admin', 'teacher'), async (req, res) => {
+router.post('/chat', protect, authorize('admin', 'teacher', 'student'), async (req, res) => {
   try {
     const { message } = req.body;
-    const userId = req.user.id;
+    const user = req.user;
 
     if (!message || message.trim() === '') {
       return res.status(400).json({
@@ -25,7 +25,7 @@ router.post('/chat', protect, authorize('admin', 'teacher'), async (req, res) =>
       });
     }
 
-    const result = await chatService.generateResponse(message, userId);
+    const result = await chatService.generateResponse(message, user);
 
     if (result.success) {
       res.status(200).json({

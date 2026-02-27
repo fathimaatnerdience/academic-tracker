@@ -13,14 +13,101 @@ export class AcademicChatService {
     this.currentStudent = new Map(); // Track currently discussed student by user ID
   }
 
-  async generateResponse(userMessage, userId = 'default') {
+  isOutOfScopeForStudent(message = '') {
+    const msg = String(message || '').toLowerCase();
+
+    const indicators = [
+      'best performer',
+      'top performer',
+      'top student',
+      'best student',
+      'rank',
+      'ranking',
+      'top 10',
+      'lowest attendance',
+      'highest attendance',
+      'gender ratio',
+      'boys',
+      'girls',
+      'male',
+      'female',
+      'overall',
+      'all students',
+      'everyone',
+      'entire school',
+      'whole school',
+      'class attendance',
+      'section attendance',
+      'batch attendance'
+    ];
+
+    const asksAggregates = indicators.some(t => msg.includes(t));
+    if (!asksAggregates) return false;
+
+    const selfMarkers = ['my ', 'me ', 'mine', 'i ', 'myself'];
+    const isExplicitlySelf = selfMarkers.some(t => msg.includes(t));
+
+    return !isExplicitlySelf;
+  }
+
+  async generateResponse(userMessage, user = null) {
     try {
+      const userId = user?.id || 'default';
+      const role = user?.role || 'unknown';
+
+      const normalizedMessage = String(userMessage || '').toLowerCase();
+
       // Check if this is a follow-up question about a previously mentioned student
       const currentStudentName = this.currentStudent.get(userId);
       const isFollowUpQuestion = this.isFollowUpQuestion(userMessage);
       
       // Build context based on the user's query
-      const context = await this.contextBuilder.buildContextForQuery(userMessage);
+      const context = await this.contextBuilder.buildContextForQuery(userMessage, user);
+
+      const asksBestPerformer =
+        normalizedMessage.includes('best performing') ||
+        normalizedMessage.includes('best performer') ||
+        normalizedMessage.includes('top performer') ||
+        normalizedMessage.includes('top performing');
+
+      if ((role === 'admin' || role === 'teacher') && asksBestPerformer) {
+        const top = Array.isArray(context.topPerformers) ? context.topPerformers : [];
+        if (top.length > 0) {
+          const best = top[0];
+          const bestName = best?.name || 'Unknown';
+          const bestAvg = best?.averageScore ?? 0;
+          const bestAttendance = best?.attendanceRate ?? 0;
+          return {
+            success: true,
+            response: `Best performing student: ${bestName}\nAverage score: ${bestAvg}%\nAttendance: ${bestAttendance}%`,
+            contextUsed: Object.keys(context)
+          };
+        }
+
+        return {
+          success: true,
+          response: 'I cannot identify the best performing student because there are no recorded marks/results yet (or percentages are missing). Please add exam/assignment results to enable performance rankings.',
+          contextUsed: Object.keys(context)
+        };
+      }
+
+      if (role === 'student') {
+        if (!context.specificStudent) {
+          return {
+            success: true,
+            response: 'Your student profile is not linked to this account yet, so I can only answer general study guidance right now. Please contact your admin to link your student profile.',
+            contextUsed: Object.keys(context)
+          };
+        }
+
+        if (this.isOutOfScopeForStudent(userMessage)) {
+          return {
+            success: true,
+            response: 'I can only help with your own academic data (your marks, attendance, subjects, and improvement steps). I cannot provide other students\' data, class-wide rankings, gender ratios, or overall statistics.',
+            contextUsed: Object.keys(context)
+          };
+        }
+      }
       
       // If this is a follow-up and we have a current student, ensure they're in the context
       if (isFollowUpQuestion && currentStudentName && !context.specificStudent) {
@@ -77,7 +164,7 @@ export class AcademicChatService {
       }
       
       // Create system prompt with academic context
-      const systemPrompt = this.createSystemPrompt(context, currentStudentName, isFollowUpQuestion);
+      const systemPrompt = this.createSystemPrompt(context, currentStudentName, isFollowUpQuestion, user);
       
       // Get or initialize conversation history
       const history = this.conversationHistory.get(userId) || [];
@@ -127,9 +214,12 @@ export class AcademicChatService {
     return followUpIndicators.some(indicator => msg.includes(indicator));
   }
 
-  createSystemPrompt(context, currentStudentName = null, isFollowUp = false) {
-    let prompt = `You are an AI Academic Assistant for a school management system called "Academic Tracker". 
-Your role is to help teachers and administrators with questions about students, classes, attendance, exams, and academic performance.
+  createSystemPrompt(context, currentStudentName = null, isFollowUp = false, user = null) {
+    const role = user?.role || 'unknown';
+    const isStudent = role === 'student';
+
+    let prompt = `You are an AI Academic Assistant for a school management system called "Academic Tracker".
+Your role is to help users with questions about students, classes, attendance, exams, and academic performance.
 
 CRITICAL FORMATTING RULES:
 - NEVER use markdown formatting like asterisks (**) for bold, underscores, or other special formatting
@@ -145,12 +235,15 @@ Guidelines:
 5. If asked about something not in the context, provide general guidance based on educational best practices
 6. Always maintain student privacy - never share sensitive personal information
 7. Provide actionable insights and recommendations when appropriate
-8. When a student is mentioned, you have access to their complete subject breakdown
-9. IMPORTANT: If asked about a specific student's subject performance, check their "Subject Breakdown" section and list actual subject names with scores
-10. Each student entry includes subjectBreakdown showing every subject they take with individual scores
-11. IMPORTANT: If the user asks a follow-up question using pronouns like "she", "he", "this student", refer to the CURRENTLY DISCUSSED STUDENT and check their Subject Breakdown
-12. When listing subjects, ALWAYS use the actual subject names from the Subject Breakdown, never say "undefined"
-13. IMPORTANT: If asked about a specific class or batch, use the SPECIFIC CLASS context (gender ratio, attendance summary, subject performance) when available
+8. IMPORTANT ACCESS RULE: If the current user role is "student", you MUST ONLY answer using the logged-in student's own data that appears in the context. If the student asks about other students, classes, rank lists, top performers, gender ratio, or any overall statistics, you MUST refuse and say that they can only access their own data.
+9. If role is "admin" or "teacher", you can answer school-level and class-level analytics questions.
+10. When a student is mentioned, you have access to their complete subject breakdown
+11. IMPORTANT: If asked about a specific student's subject performance, check their "Subject Breakdown" section and list actual subject names with scores
+12. Each student entry includes subjectBreakdown showing every subject they take with individual scores
+13. IMPORTANT: If the user asks a follow-up question using pronouns like "she", "he", "this student", refer to the CURRENTLY DISCUSSED STUDENT and check their Subject Breakdown
+14. When listing subjects, ALWAYS use the actual subject names from the Subject Breakdown, never say "undefined"
+15. IMPORTANT: If asked about a specific class or batch, use the SPECIFIC CLASS context (gender ratio, attendance summary, subject performance) when available
+16. CRITICAL: If the user asks about "whole school", "entire school", "all students", or "total number" of students/genders, use the OVERALL GENDER SUMMARY data which shows totals across the entire school, not class-specific data
 
 Available Data Context:`;
 
