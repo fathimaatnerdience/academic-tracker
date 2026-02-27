@@ -1,11 +1,6 @@
 import { Op } from 'sequelize';
 import { model } from './config.js';
 
-/**
- * Academic Context Builder - Fetches and formats academic data
- * to provide context to the AI for better responses
- */
-
 export class AcademicContextBuilder {
   constructor(models) {
     this.models = models;
@@ -287,7 +282,6 @@ export class AcademicContextBuilder {
     const { Student, User, Class, Result, Attendance, Subject, Exam, Assignment } = this.models;
     
     try {
-      // Fetch students with basic info
       const students = await Student.findAll({
         limit,
         include: [
@@ -297,14 +291,12 @@ export class AcademicContextBuilder {
         ]
       });
 
-      // Fetch all subjects for reference
       const subjects = await Subject.findAll();
       const subjectMap = {};
       subjects.forEach(s => {
         subjectMap[s.id] = s.subjectName;
       });
 
-      // Fetch results separately with subject info
       const studentIds = students.map(s => s.id);
       const allResults = await Result.findAll({
         where: { studentId: studentIds },
@@ -332,7 +324,6 @@ export class AcademicContextBuilder {
         ]
       });
 
-      // Group results by student
       const resultsByStudent = {};
       allResults.forEach(r => {
         if (!resultsByStudent[r.studentId]) {
@@ -447,7 +438,6 @@ export class AcademicContextBuilder {
   async getAttendanceSummary() {
     const { Attendance } = this.models;
     
-    // Simple query without complex joins to avoid SQL errors
     const attendances = await Attendance.findAll();
 
     const total = attendances.length;
@@ -490,13 +480,11 @@ export class AcademicContextBuilder {
     }
   }
 
-  // Get detailed subject breakdown for a student
   getSubjectBreakdown(results) {
     if (!results || results.length === 0) return {};
     
     const subjectScores = {};
     results.forEach(r => {
-      // Try to get subject name from exam or assignment
       let subjectName = null;
       
       if (r.exam && r.exam.subject) {
@@ -505,7 +493,6 @@ export class AcademicContextBuilder {
         subjectName = r.assignment.subject.subjectName;
       }
       
-      // Skip if no subject name found
       if (!subjectName) return;
       
       if (!subjectScores[subjectName]) {
@@ -517,7 +504,6 @@ export class AcademicContextBuilder {
       subjectScores[subjectName].count += 1;
     });
 
-    // Calculate averages
     const breakdown = {};
     Object.entries(subjectScores).forEach(([subject, data]) => {
       breakdown[subject] = {
@@ -529,7 +515,6 @@ export class AcademicContextBuilder {
     return breakdown;
   }
 
-  // Helper methods
   calculateAverageScore(results) {
     if (!results || results.length === 0) return 0;
     const sum = results.reduce((acc, r) => acc + parseFloat(r.percentage || 0), 0);
@@ -632,7 +617,6 @@ export class AcademicContextBuilder {
       return context;
     }
 
-    // Load all essential data for comprehensive responses
     const safeLoad = async (key, loaderFn, fallbackValue) => {
       try {
         context[key] = await loaderFn();
@@ -644,7 +628,7 @@ export class AcademicContextBuilder {
       }
     };
 
-    await safeLoad('students', () => this.getStudentsData(50), []); // Load up to 50 students with full details
+    await safeLoad('students', () => this.getStudentsData(50), []);
     await safeLoad('topPerformers', () => this.getTopPerformers(10), []);
     await safeLoad('studentsNeedingImprovement', () => this.getStudentsNeedingImprovement(50), []);
     await safeLoad('classStats', () => this.getClassStats(), []);
@@ -653,7 +637,6 @@ export class AcademicContextBuilder {
 
     const normalizedQuery = String(query || '').toLowerCase();
 
-    // Detect if user is asking about the whole/entire school explicitly (including follow-ups)
     const wantsWholeSchool =
       normalizedQuery.includes('whole school') ||
       normalizedQuery.includes('entire school') ||
@@ -739,14 +722,10 @@ export class AcademicContextBuilder {
       }
     }
 
-    // Search for specific student if name mentioned in query
-    // Extract possible names (handle multi-word names like "Geeta Kumari")
     const queryWords = query.split(/\s+/);
     let foundStudent = null;
     
-    // Try matching individual words and combinations
     for (let i = 0; i < queryWords.length; i++) {
-      // Try single word
       if (queryWords[i].length > 2 && /^[A-Za-z]+$/.test(queryWords[i])) {
         const studentData = await this.searchStudentByName(queryWords[i]);
         if (studentData.length > 0) {
@@ -755,7 +734,6 @@ export class AcademicContextBuilder {
         }
       }
       
-      // Try two-word combination (e.g., "Geeta Kumari")
       if (i < queryWords.length - 1) {
         const twoWords = `${queryWords[i]} ${queryWords[i + 1]}`;
         if (/^[A-Za-z\s]+$/.test(twoWords) && twoWords.length > 3) {

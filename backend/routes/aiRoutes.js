@@ -5,14 +5,8 @@ import * as models from '../models/index.js';
 
 const router = express.Router();
 
-// Initialize AI chat service with models
 const chatService = new AcademicChatService(models);
 
-/**
- * @route   POST /api/ai/chat
- * @desc    Send a message to the AI chatbot
- * @access  Private (Admin, Teacher, Student only)
- */
 router.post('/chat', protect, authorize('admin', 'teacher', 'student'), async (req, res) => {
   try {
     const { message } = req.body;
@@ -49,11 +43,6 @@ router.post('/chat', protect, authorize('admin', 'teacher', 'student'), async (r
   }
 });
 
-/**
- * @route   POST /api/ai/student-improvement/:studentId
- * @desc    Generate improvement plan for a specific student
- * @access  Private (Admin, Teacher only)
- */
 router.post('/student-improvement/:studentId', protect, authorize('admin', 'teacher'), async (req, res) => {
   try {
     const { studentId } = req.params;
@@ -82,11 +71,6 @@ router.post('/student-improvement/:studentId', protect, authorize('admin', 'teac
   }
 });
 
-/**
- * @route   POST /api/ai/class-analysis/:classId
- * @desc    Generate analysis for a specific class
- * @access  Private (Admin, Teacher only)
- */
 router.post('/class-analysis/:classId', protect, authorize('admin', 'teacher'), async (req, res) => {
   try {
     const { classId } = req.params;
@@ -115,11 +99,6 @@ router.post('/class-analysis/:classId', protect, authorize('admin', 'teacher'), 
   }
 });
 
-/**
- * @route   DELETE /api/ai/clear-history
- * @desc    Clear conversation history for current user
- * @access  Private (Admin, Teacher only)
- */
 router.delete('/clear-history', protect, authorize('admin', 'teacher'), async (req, res) => {
   try {
     const userId = req.user.id;
@@ -139,11 +118,6 @@ router.delete('/clear-history', protect, authorize('admin', 'teacher'), async (r
   }
 });
 
-/**
- * @route   GET /api/ai/health
- * @desc    Check AI service health
- * @access  Public
- */
 router.get('/health', async (req, res) => {
   try {
     const apiKey = process.env.GEMINI_API_KEY;

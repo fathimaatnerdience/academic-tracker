@@ -1,16 +1,12 @@
 import { model } from './config.js';
 import AcademicContextBuilder from './contextBuilder.js';
 
-/**
- * Academic Chat Service - Handles AI chat interactions
- */
-
 export class AcademicChatService {
   constructor(models) {
     this.contextBuilder = new AcademicContextBuilder(models);
     this.models = models;
-    this.conversationHistory = new Map(); // Store conversation history by user ID
-    this.currentStudent = new Map(); // Track currently discussed student by user ID
+    this.conversationHistory = new Map();
+    this.currentStudent = new Map();
   }
 
   isOutOfScopeForStudent(message = '') {
@@ -57,11 +53,9 @@ export class AcademicChatService {
 
       const normalizedMessage = String(userMessage || '').toLowerCase();
 
-      // Check if this is a follow-up question about a previously mentioned student
       const currentStudentName = this.currentStudent.get(userId);
       const isFollowUpQuestion = this.isFollowUpQuestion(userMessage);
       
-      // Build context based on the user's query
       const context = await this.contextBuilder.buildContextForQuery(userMessage, user);
 
       const asksBestPerformer =
@@ -109,15 +103,12 @@ export class AcademicChatService {
         }
       }
       
-      // If this is a follow-up and we have a current student, ensure they're in the context
       if (isFollowUpQuestion && currentStudentName && !context.specificStudent) {
         try {
-          // Find the student from the existing students list
           const student = context.students?.find(s => 
             s.name.toLowerCase().includes(currentStudentName.toLowerCase())
           );
           if (student) {
-            // Load full details for this student
             const fullStudent = await this.models.Student.findByPk(student.id, {
               include: [
                 { model: this.models.User, as: 'user' },
@@ -158,18 +149,14 @@ export class AcademicChatService {
         }
       }
       
-      // Track the student mentioned in this response for future follow-ups
       if (context.specificStudent?.user?.name) {
         this.currentStudent.set(userId, context.specificStudent.user.name);
       }
       
-      // Create system prompt with academic context
       const systemPrompt = this.createSystemPrompt(context, currentStudentName, isFollowUpQuestion, user);
       
-      // Get or initialize conversation history
       const history = this.conversationHistory.get(userId) || [];
       
-      // Build the conversation
       const chat = model.startChat({
         history: history,
         generationConfig: {
@@ -180,11 +167,9 @@ export class AcademicChatService {
         }
       });
 
-      // Generate response
       const result = await chat.sendMessage(`${systemPrompt}\n\nUser Query: ${userMessage}`);
       const response = result.response.text();
       
-      // Update conversation history (keep last 10 exchanges)
       const newHistory = [
         ...history,
         { role: 'user', parts: [{ text: userMessage }] },
@@ -247,7 +232,6 @@ Guidelines:
 
 Available Data Context:`;
 
-    // Add note about current student for follow-ups
     if (currentStudentName && isFollowUp) {
       prompt += `\n\n📝 CURRENTLY DISCUSSED STUDENT: ${currentStudentName}\n`;
       prompt += `When answering questions with "she", "he", "this student", or "which subject", assume the user is asking about ${currentStudentName}.\n`;
@@ -376,7 +360,6 @@ Available Data Context:`;
         prompt += `- Strong Subjects: ${s.strongSubjects.join(', ')}\n`;
       }
       
-      // Add detailed subject breakdown
       if (s.subjectBreakdown && Object.keys(s.subjectBreakdown).length > 0) {
         prompt += `- Subject Breakdown:\n`;
         Object.entries(s.subjectBreakdown).forEach(([subject, data]) => {
@@ -394,7 +377,6 @@ Available Data Context:`;
     this.conversationHistory.delete(userId);
   }
 
-  // Method to generate improvement suggestions
   async generateImprovementPlan(studentId) {
     try {
       const { Student, User, Result, Attendance, Exam, Assignment, Subject } = this.models;
@@ -468,7 +450,6 @@ Keep it concise and practical.`;
     }
   }
 
-  // Method to generate class analysis
   async generateClassAnalysis(classId) {
     try {
       const { Class, Student, Result } = this.models;
