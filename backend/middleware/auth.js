@@ -15,20 +15,28 @@ export const protect = async (req, res, next) => {
 
     // 🔧 DEMO MODE: Accept mock tokens for testing
     if (token.startsWith('mock-token-')) {
-      // Create a mock user based on the token for demo purposes
-      const mockUserData = {
-        id: 1,
-        name: 'Demo Admin',
-        email: 'admin@school.com',
-        role: 'admin',
-        isActive: true
-      };
+      // Find an existing admin user or first user in the database for demo purposes
+      const adminUser = await User.findOne({ where: { role: 'admin' } });
       
-      // Create a mock user object (not from database)
-      req.user = mockUserData;
+      if (adminUser) {
+        req.user = adminUser;
+      } else {
+        // Try to get any user as fallback
+        const anyUser = await User.findOne();
+        if (anyUser) {
+          req.user = anyUser;
+        } else {
+          // No users in database - return error
+          return res.status(401).json({
+            success: false,
+            message: 'No users found in database. Please register a user first.'
+          });
+        }
+      }
+      
       req.isMockToken = true; // Flag to indicate this is a mock token
       
-      console.log('🔧 Demo mode: Mock token accepted');
+      console.log('🔧 Demo mode: Mock token accepted, using user:', req.user.id);
       return next();
     }
 
@@ -58,10 +66,29 @@ export const protect = async (req, res, next) => {
 
       next();
     } catch (error) {
-      console.error(error);
+      console.error('Token verification error:', error.message);
+      
+      // Handle specific JWT errors
+      if (error.name === 'TokenExpiredError') {
+        return res.status(401).json({
+          success: false,
+          message: 'Token expired - please login again',
+          code: 'TOKEN_EXPIRED'
+        });
+      }
+      
+      if (error.name === 'JsonWebTokenError') {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid token',
+          code: 'INVALID_TOKEN'
+        });
+      }
+
       return res.status(401).json({
         success: false,
-        message: 'Not authorized, token failed'
+        message: 'Not authorized - token failed',
+        code: 'TOKEN_ERROR'
       });
     }
   }

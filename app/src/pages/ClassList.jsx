@@ -4,9 +4,12 @@ import { classesAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import { Plus, Search, Edit, Trash2, Eye, Users } from 'lucide-react';
 import ClassFormModal from '../components/ClassFormModal';
+import { handleError } from '../utils/errorHandler';
+import { useAuth } from '../contexts/AuthContext';
 
 const ClassList = () => {
   const [classes, setClasses] = useState([]);
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -26,10 +29,12 @@ const ClassList = () => {
         limit: 10,
         search: searchTerm
       });
-      setClasses(response.data);
-      setTotalPages(response.totalPages);
+      // API returns { success, count, totalPages, currentPage, data: rows }
+      // Interceptor already returns response.data, so response IS the data object
+      setClasses(response.data || []);
+      setTotalPages(response.totalPages || 1);
     } catch (error) {
-      toast.error('Failed to fetch classes');
+      handleError(error, 'Failed to fetch classes');
     } finally {
       setLoading(false);
     }
@@ -43,7 +48,7 @@ const ClassList = () => {
       toast.success('Class deleted');
       fetchClasses();
     } catch (error) {
-      toast.error('Failed to delete class');
+      handleError(error, 'Failed to delete class');
     }
   };
 
@@ -52,13 +57,17 @@ const ClassList = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Classes</h1>
-        <button
-          onClick={() => { setSelectedClass(null); setShowModal(true); }}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-        >
-          <Plus size={20} />
-          Add Class
-        </button>
+        
+        {/* Only show Add button for Admin */}
+        {user?.role === 'admin' && (
+          <button
+            onClick={() => { setSelectedClass(null); setShowModal(true); }}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          >
+            <Plus size={20} />
+            Add Class
+          </button>
+        )}
       </div>
 
       {/* Search */}
@@ -90,7 +99,9 @@ const ClassList = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Supervisor</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Capacity</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Students</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  {user?.role === 'admin' && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -110,16 +121,18 @@ const ClassList = () => {
                         <span className="text-sm text-gray-900">{classItem.students?.length || 0}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        <button onClick={() => { setSelectedClass(classItem); setShowModal(true); }} className="text-green-600">
-                          <Edit size={18} />
-                        </button>
-                        <button onClick={() => handleDelete(classItem.id)} className="text-red-600">
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </td>
+                    {user?.role === 'admin' && (
+                      <td className="px-6 py-4">
+                        <div className="flex gap-2">
+                          <button onClick={() => { setSelectedClass(classItem); setShowModal(true); }} className="text-green-600">
+                            <Edit size={18} />
+                          </button>
+                          <button onClick={() => handleDelete(classItem.id)} className="text-red-600">
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

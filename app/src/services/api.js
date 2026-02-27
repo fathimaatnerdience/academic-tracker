@@ -2,7 +2,6 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-// Create axios instance
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -10,7 +9,7 @@ const api = axios.create({
   }
 });
 
-// Request interceptor - Add token to requests
+// ✅ Request interceptor - Add token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -22,22 +21,59 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor - Handle errors
+// ✅ Response interceptor - Handle errors WITHOUT showing toasts
+// Let components handle toasts to avoid duplicates
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    if (error.response?.status === 401) {
+    const responseData = error.response?.data;
+    const status = error.response?.status;
+    
+    // Log error for developers (console only)
+    if (process.env.NODE_ENV === 'development') {
+      console.error('API Error:', {
+        status: status,
+        message: responseData?.message,
+        url: error.config?.url
+      });
+    }
+    
+    // Handle authentication errors - Auto logout
+    if (status === 401 || responseData?.code === 'TOKEN_EXPIRED') {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      window.location.href = '/login?expired=true';
+      return Promise.reject(new Error('Session expired'));
     }
-    return Promise.reject(error.response?.data || error);
+    
+    // Handle invalid token
+    if (responseData?.code === 'INVALID_TOKEN') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login?invalid=true';
+      return Promise.reject(new Error('Invalid session'));
+    }
+    
+    // Handle account deactivated
+    if (responseData?.code === 'ACCOUNT_DEACTIVATED') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login?deactivated=true';
+      return Promise.reject(new Error('Account deactivated'));
+    }
+    
+    // Create user-friendly error object
+    const userMessage = responseData?.message || 'An error occurred. Please try again.';
+    const friendlyError = new Error(userMessage);
+    friendlyError.status = status;
+    friendlyError.originalError = error;
+    
+    // ✅ DON'T show toast here - let components handle it
+    // This prevents duplicate toasts
+    
+    return Promise.reject(friendlyError);
   }
 );
-
-// ========================================
-// Generic CRUD API Creator
-// ========================================
 
 const createCrudAPI = (resource) => ({
   getAll: (params) => api.get(`/${resource}`, { params }),
@@ -47,14 +83,16 @@ const createCrudAPI = (resource) => ({
   delete: (id) => api.delete(`/${resource}/${id}`)
 });
 
-// ========================================
-// Auth API
-// ========================================
+// Search API
+export const searchAPI = {
+  globalSearch: (query, type = null) => api.get('/search', { params: { q: query, type } })
+};
 
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
   getMe: () => api.get('/auth/me'),
+  validateToken: () => api.get('/auth/validate'),
   updateProfile: (data) => api.put('/auth/updatedetails', data),
   updatePassword: (data) => api.put('/auth/updatepassword', data),
   logout: () => {
@@ -62,10 +100,6 @@ export const authAPI = {
     localStorage.removeItem('user');
   }
 };
-
-// ========================================
-// Students API
-// ========================================
 
 export const studentsAPI = {
   ...createCrudAPI('students'),
@@ -76,10 +110,6 @@ export const studentsAPI = {
   })
 };
 
-// ========================================
-// Teachers API
-// ========================================
-
 export const teachersAPI = {
   ...createCrudAPI('teachers'),
   getBySubject: (subjectId) => api.get(`/teachers?subjectId=${subjectId}`),
@@ -88,18 +118,10 @@ export const teachersAPI = {
   })
 };
 
-// ========================================
-// Parents API
-// ========================================
-
 export const parentsAPI = {
   ...createCrudAPI('parents'),
   getChildren: (parentId) => api.get(`/parents/${parentId}/children`)
 };
-
-// ========================================
-// Classes API
-// ========================================
 
 export const classesAPI = {
   ...createCrudAPI('classes'),
@@ -108,19 +130,11 @@ export const classesAPI = {
   assignSupervisor: (classId, teacherId) => api.put(`/classes/${classId}/supervisor`, { teacherId })
 };
 
-// ========================================
-// Subjects API
-// ========================================
-
 export const subjectsAPI = {
   ...createCrudAPI('subjects'),
   getByGrade: (gradeLevel) => api.get(`/subjects?gradeLevel=${gradeLevel}`),
   getByType: (type) => api.get(`/subjects?type=${type}`)
 };
-
-// ========================================
-// Lessons API
-// ========================================
 
 export const lessonsAPI = {
   ...createCrudAPI('lessons'),
@@ -130,10 +144,6 @@ export const lessonsAPI = {
   getTimetable: (classId, week) => api.get(`/lessons/timetable`, { params: { classId, week } })
 };
 
-// ========================================
-// Exams API
-// ========================================
-
 export const examsAPI = {
   ...createCrudAPI('exams'),
   getByClass: (classId) => api.get(`/exams?classId=${classId}`),
@@ -142,10 +152,6 @@ export const examsAPI = {
   getUpcoming: () => api.get('/exams/upcoming'),
   getByDateRange: (startDate, endDate) => api.get('/exams', { params: { startDate, endDate } })
 };
-
-// ========================================
-// Assignments API
-// ========================================
 
 export const assignmentsAPI = {
   ...createCrudAPI('assignments'),
@@ -158,10 +164,6 @@ export const assignmentsAPI = {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
 };
-
-// ========================================
-// Results API
-// ========================================
 
 export const resultsAPI = {
   ...createCrudAPI('results'),
@@ -181,10 +183,6 @@ export const resultsAPI = {
   }
 };
 
-// ========================================
-// Attendance API
-// ========================================
-
 export const attendanceAPI = {
   ...createCrudAPI('attendance'),
   getByStudent: (studentId, params) => api.get(`/attendance?studentId=${studentId}`, { params }),
@@ -199,10 +197,6 @@ export const attendanceAPI = {
   })
 };
 
-// ========================================
-// Events API
-// ========================================
-
 export const eventsAPI = {
   ...createCrudAPI('events'),
   getByClass: (classId) => api.get(`/events?classId=${classId}`),
@@ -212,10 +206,6 @@ export const eventsAPI = {
   getCalendar: (month, year) => api.get('/events/calendar', { params: { month, year } })
 };
 
-// ========================================
-// Announcements API
-// ========================================
-
 export const announcementsAPI = {
   ...createCrudAPI('announcements'),
   getByClass: (classId) => api.get(`/announcements?classId=${classId}`),
@@ -223,10 +213,6 @@ export const announcementsAPI = {
   getActive: () => api.get('/announcements/active'),
   getByPriority: (priority) => api.get(`/announcements?priority=${priority}`)
 };
-
-// ========================================
-// Dashboard Stats API
-// ========================================
 
 export const dashboardAPI = {
   getStats: () => api.get('/dashboard/stats'),
@@ -237,5 +223,12 @@ export const dashboardAPI = {
   getRecentActivity: (limit = 10) => api.get('/dashboard/recent-activity', { params: { limit } })
 };
 
-// Export default api instance for custom requests
+export const aiAPI = {
+  chat: (message) => api.post('/ai/chat', { message }),
+  getStudentImprovementPlan: (studentId) => api.post(`/ai/student-improvement/${studentId}`),
+  getClassAnalysis: (classId) => api.post(`/ai/class-analysis/${classId}`),
+  clearHistory: () => api.delete('/ai/clear-history'),
+  healthCheck: () => api.get('/ai/health')
+};
+
 export default api;

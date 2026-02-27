@@ -41,11 +41,12 @@ const Sidebar = () => {
   );
 
   return (
-    <div className="h-full bg-white border-r border-gray-200 flex flex-col">
+    <div className="h-full bg-white border-r border-gray-200 flex flex-col ">
       {/* Logo */}
-      <div className="p-6 border-b border-gray-200">
-        <h1 className="text-2xl font-bold text-yellow-500">Academic Tracker</h1>
-        <p className="text-sm text-gray-500 mt-1">School Management</p>
+      <div className="p-6 border-b border-gray-200 flex flex-col items-center bg-[#DDDB59]">
+        <img src="/ac.logo.png" alt="Academic Tracker Logo" className="w-20 h-20 rounded-full mx-auto mb-0 scale-110" />
+        <h1 className="text-2xl font-bold text-black mt-1 leading-tight">Academic Tracker</h1>
+        
       </div>
 
       {/* Navigation Menu */}

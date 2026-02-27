@@ -1,4 +1,5 @@
 import { DataTypes } from 'sequelize';
+import bcrypt from 'bcryptjs';
 import { sequelize } from '../config/database.js';
 
 const Student = sequelize.define('Student', {
@@ -9,17 +10,44 @@ const Student = sequelize.define('Student', {
   },
   userId: {
     type: DataTypes.UUID,
-    allowNull: false,
+    allowNull: true,
     references: {
       model: 'users',
       key: 'id'
     },
-    onDelete: 'CASCADE'
+    onDelete: 'SET NULL'
   },
   studentId: {
     type: DataTypes.STRING(20),
     allowNull: false,
     unique: false
+  },
+  // Direct fields for admin-created students (not linked to User table)
+  name: {
+    type: DataTypes.STRING(100),
+    allowNull: true
+  },
+  email: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    validate: {
+      isEmail: true
+    }
+  },
+  phone: {
+    type: DataTypes.STRING(20),
+    allowNull: true
+  },
+  address: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  password: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    validate: {
+      len: [6, 100]
+    }
   },
   classId: {
     type: DataTypes.UUID,
@@ -32,7 +60,7 @@ const Student = sequelize.define('Student', {
   },
   gradeLevel: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     validate: {
       min: 1,
       max: 12
@@ -68,17 +96,32 @@ const Student = sequelize.define('Student', {
     },
     onDelete: 'SET NULL'
   },
-  emergencyContact: {
+  contact: {
     type: DataTypes.STRING(20),
-    allowNull: true
-  },
-  medicalInfo: {
-    type: DataTypes.TEXT,
     allowNull: true
   }
 }, {
   tableName: 'students',
-  timestamps: true
+  timestamps: true,
+  hooks: {
+    beforeCreate: async (student) => {
+      if (student.password) {
+        const salt = await bcrypt.genSalt(10);
+        student.password = await bcrypt.hash(student.password, salt);
+      }
+    },
+    beforeUpdate: async (student) => {
+      if (student.changed('password')) {
+        const salt = await bcrypt.genSalt(10);
+        student.password = await bcrypt.hash(student.password, salt);
+      }
+    }
+  }
 });
+
+// Instance method to check password
+Student.prototype.matchPassword = async function(enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
 
 export default Student;

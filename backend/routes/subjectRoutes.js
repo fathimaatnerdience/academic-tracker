@@ -13,11 +13,11 @@ const router = express.Router();
 router.use(protect);
 
 router.route('/')
-  .get(authorize('admin', 'teacher'), getSubjects)
+  .get(authorize('admin', 'teacher', 'student', 'parent'), getSubjects)
   .post(authorize('admin'), createSubject);
 
 router.route('/:id')
-  .get(authorize('admin', 'teacher'), getSubject)
+  .get(authorize('admin', 'teacher', 'student', 'parent'), getSubject)
   .put(authorize('admin'), updateSubject)
   .delete(authorize('admin'), deleteSubject);
 

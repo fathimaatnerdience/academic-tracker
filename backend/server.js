@@ -9,7 +9,6 @@ import { sequelize } from './config/database.js';
 // ✅ CRITICAL: Import models index to initialize all models and associations
 import * as models from './models/index.js';
 
-
 import authRoutes from './routes/authRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
 import teacherRoutes from './routes/teacherRoutes.js';
@@ -23,9 +22,22 @@ import resultRoutes from './routes/resultRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import eventRoutes from './routes/eventRoutes.js';
 import announcementRoutes from './routes/announcementRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
+import searchRoutes from './routes/searchRoutes.js';
 
 // Load environment variables
 dotenv.config();
+
+if (!process.env.JWT_SECRET) {
+  if (process.env.NODE_ENV === 'development') {
+    process.env.JWT_SECRET = 'dev_jwt_secret_change_me';
+    console.warn('⚠️ JWT_SECRET is missing. Using an insecure development fallback secret.');
+    console.warn('⚠️ Add JWT_SECRET to backend/.env (see backend/.env.example) to keep tokens stable across restarts.');
+  } else {
+    console.error('❌ Missing JWT_SECRET in environment. Add it to backend/.env (see backend/.env.example).');
+    process.exit(1);
+  }
+}
 
 // Initialize Express app
 const app = express();
@@ -45,7 +57,17 @@ app.use('/api', limiter);
 // CORS Configuration
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Handle preflight requests explicitly
+app.options('*', cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Body Parser Middleware
@@ -57,19 +79,7 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// Static Files
-app.use('/uploads', express.static('uploads'));
-
-// Health Check Route
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Academic Tracker API is running',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// API Routes
+// API Routes - MUST be defined BEFORE the 404 handler
 app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/teachers', teacherRoutes);
@@ -83,12 +93,14 @@ app.use('/api/results', resultRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/announcements', announcementRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/search', searchRoutes);
 
-// 404 Handler
+// 404 Handler - Must be AFTER all API routes
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: 'Route not found'
+    message: 'The requested page or resource was not found.'
   });
 });
 
@@ -110,7 +122,7 @@ const startServer = async () => {
     await sequelize.authenticate();
     console.log('✅ Database connection established successfully');
 
-    // Sync ALL models with database - enabled alter to update column names
+    // Sync ALL models with database (alter: false to avoid foreign key issues)
     await sequelize.sync({ alter: false, force: false });
     console.log('✅ Database models synchronized');
     
