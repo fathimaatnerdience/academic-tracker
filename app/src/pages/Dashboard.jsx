@@ -177,8 +177,8 @@ const Dashboard = () => {
                   <tr>
                     <th className="pb-2">Title</th>
                     <th className="pb-2">Description</th>
-                    <th className="pb-2">Start</th>
-                    <th className="pb-2">End</th>
+                    <th className="pb-2">Start Date</th>
+                    <th className="pb-2">End Date</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -186,8 +186,8 @@ const Dashboard = () => {
                     <tr key={ev.id} className="border-t border-gray-200">
                       <td className="py-1 pr-3 font-medium text-gray-800">{ev.title}</td>
                       <td className="py-1 pr-3 text-gray-700">{ev.description || '-'}</td>
-                      <td className="py-1 pr-3 text-gray-700">{new Date(ev.start).toLocaleString()}</td>
-                      <td className="py-1 pr-3 text-gray-700">{new Date(ev.end).toLocaleString()}</td>
+                      <td className="py-1 pr-3 text-gray-700">{new Date(ev.start).toLocaleDateString()}</td>
+                      <td className="py-1 pr-3 text-gray-700">{new Date(ev.end).toLocaleDateString()}</td>
                     </tr>
                   ))}
                 </tbody>
