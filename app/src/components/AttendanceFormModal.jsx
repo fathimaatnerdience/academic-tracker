@@ -16,8 +16,10 @@ const AttendanceFormModal = ({ isOpen, onClose, onSuccess, attendance = null }) 
   });
 
   useEffect(() => {
-    fetchDropdownData();
-  }, []);
+    if (isOpen) {
+      fetchDropdownData();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (attendance) {

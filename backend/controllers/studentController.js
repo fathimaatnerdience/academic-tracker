@@ -200,12 +200,22 @@ export const updateStudent = async (req, res, next) => {
       return next(new ErrorResponse('Student not found', 404));
     }
 
-    const { studentData } = req.body;
+    const { userData, studentData } = req.body;
 
-    // Update student data - if classId is changed, also update gradeLevel and section
+    // Prepare update data
+    let updateData = {};
+
+    // Handle userData for admin-created students (stored in student table)
+    if (userData && !student.userId) {
+      updateData.name = userData.name;
+      updateData.email = userData.email;
+      updateData.address = userData.address;
+    }
+
+    // Handle studentData
     if (studentData) {
       let finalStudentData = { ...studentData };
-      
+
       if (finalStudentData.classId) {
         try {
           const classRecord = await Class.findByPk(finalStudentData.classId);
@@ -221,15 +231,18 @@ export const updateStudent = async (req, res, next) => {
         finalStudentData.gradeLevel = null;
         finalStudentData.section = null;
       }
-      
-      await student.update(finalStudentData);
+
+      updateData = { ...updateData, ...finalStudentData };
     }
+
+    // Update student
+    await student.update(updateData);
 
     // Fetch updated student
     const updatedStudent = await Student.findByPk(student.id, {
       include: [
-        { 
-          model: User, 
+        {
+          model: User,
           as: 'user',
           attributes: { exclude: ['password'] }
         },

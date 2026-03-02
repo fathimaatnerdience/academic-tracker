@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Create Sequelize instance
+// Create Sequelize instance - Simple and working configuration
 export const sequelize = new Sequelize(
   process.env.DB_NAME,
   process.env.DB_USER,
@@ -13,6 +13,7 @@ export const sequelize = new Sequelize(
     port: process.env.DB_PORT || 3306,
     dialect: 'mysql',
     logging: process.env.NODE_ENV === 'development' ? console.log : false,
+    // Use default pool settings - Sequelize handles connection management
     pool: {
       max: 5,
       min: 0,

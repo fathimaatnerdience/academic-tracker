@@ -64,11 +64,12 @@ const StudentFormModal = ({ isOpen, onClose, onSuccess, student = null }) => {
         });
       } else {
         // Editing existing student - populate form
+        // Check both student.user (for registered users) and student (for admin-created)
         setFormData({
-          name: student.user?.name || '',
-          email: student.user?.email || '',
+          name: student.user?.name || student.name || '',
+          email: student.user?.email || student.email || '',
           phone: student.phone || '',
-          address: student.user?.address || '',
+          address: student.user?.address || student.address || '',
           classId: student.classId || '',
           dateOfBirth: student.dateOfBirth || '',
           gender: student.gender || '',

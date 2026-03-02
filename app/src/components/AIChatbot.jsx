@@ -20,12 +20,14 @@ const AIChatbot = () => {
   const [isAiHealthy, setIsAiHealthy] = useState(true);
   const messagesEndRef = useRef(null);
 
-  // Only show for admin and teacher
-  if (!user || (user.role !== 'admin' && user.role !== 'teacher')) {
+  if (!user) {
     return null;
   }
 
-  // Check AI service health on mount
+  if (user?.role === 'parent') {
+    return null;
+  }
+
   useEffect(() => {
     const checkHealth = async () => {
       try {
@@ -50,10 +52,8 @@ const AIChatbot = () => {
     e.preventDefault();
     if (!inputMessage.trim()) return;
 
-    // Clear any previous error
     setError(null);
 
-    // Add user message
     const userMessage = {
       id: Date.now(),
       type: 'user',
@@ -65,7 +65,6 @@ const AIChatbot = () => {
     setIsTyping(true);
 
     try {
-      // Call the AI API
       const response = await aiAPI.chat(inputMessage);
       
       if (response.success) {
@@ -96,10 +95,26 @@ const AIChatbot = () => {
     }
   };
 
-  const quickActions = [
-    'Who is the best performing student?',
-    'Give me class performance analysis'
-  ];
+  const getQuickActions = () => {
+    const role = user?.role;
+    if (role === 'student') {
+      return [
+        'What is my average score?',
+        'How is my attendance?',
+        'Which subjects do I need to improve?',
+        'What are my strong subjects?',
+        "Show my subject breakdown"
+      ];
+    }
+    return [
+      'Who is the best performing student?',
+      'Give me class performance analysis',
+      "Which students need improvement?",
+      'What is the class attendance rate?'
+    ];
+  };
+
+  const quickActions = getQuickActions();
 
   const handleQuickAction = (action) => {
     setInputMessage(action);
@@ -124,7 +139,6 @@ const AIChatbot = () => {
 
   return (
     <>
-      {/* Floating Chat Button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -138,18 +152,15 @@ const AIChatbot = () => {
           {!isAiHealthy && (
             <span className="absolute -bottom-1 -left-1 bg-red-500 rounded-full w-3 h-3 animate-ping" />
           )}
-          {/* Tooltip */}
           <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
             Ask AI Assistant
           </div>
         </button>
       )}
 
-      {/* Chat Window */}
       {isOpen && (
         <div className="fixed bottom-4 sm:bottom-14 right-2 sm:right-4 z-50 w-[95%] sm:w-[400px] h-[500px] sm:h-[600px] max-h-[80vh] bg-white rounded-2xl shadow-2xl flex flex-col animate-slideUp">
           
-          {/* Header */}
           <div className="text-white p-4 rounded-t-2xl flex items-center justify-between" style={{ backgroundColor: '#DDDB59' }}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/30 rounded-full flex items-center justify-center backdrop-blur">
@@ -180,7 +191,6 @@ const AIChatbot = () => {
             </div>
           </div>
 
-          {/* Error Banner */}
           {error && (
             <div className="bg-red-50 border-l-4 border-red-400 p-3 flex items-center gap-2">
               <AlertCircle size={16} className="text-red-400" />
@@ -188,14 +198,12 @@ const AIChatbot = () => {
             </div>
           )}
 
-          {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
             {messages.map((message) => (
               <div
                 key={message.id}
                 className={`flex gap-3 ${message.type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
               >
-                {/* Avatar */}
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                   message.type === 'bot' 
                     ? 'text-white' 
@@ -204,7 +212,6 @@ const AIChatbot = () => {
                   {message.type === 'bot' ? <Bot size={18} /> : <User size={18} />}
                 </div>
 
-                {/* Message Bubble */}
                 <div className={`max-w-[70%] ${message.type === 'user' ? 'items-end' : 'items-start'}`}>
                   <div className={`px-4 py-3 rounded-2xl ${
                     message.type === 'bot'
@@ -222,7 +229,6 @@ const AIChatbot = () => {
               </div>
             ))}
 
-            {/* Typing Indicator */}
             {isTyping && (
               <div className="flex gap-3">
                 <div className="w-8 h-8 rounded-full text-white flex items-center justify-center" style={{ backgroundColor: '#DDDB59' }}>
@@ -241,7 +247,6 @@ const AIChatbot = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Actions */}
           {messages.length <= 2 && !isTyping && (
             <div className="p-4 bg-white border-t">
               <p className="text-xs text-gray-500 mb-2 font-semibold">Quick Questions:</p>
@@ -260,7 +265,6 @@ const AIChatbot = () => {
             </div>
           )}
 
-          {/* Input Area */}
           <form onSubmit={handleSendMessage} className="p-3 bg-white border-t rounded-b-2xl">
             <div className="flex gap-2">
               <input
@@ -285,7 +289,6 @@ const AIChatbot = () => {
         </div>
       )}
 
-      {/* CSS for Animation */}
       <style jsx>{`
         @keyframes slideUp {
           from {

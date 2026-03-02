@@ -1,14 +1,64 @@
 import { Op } from 'sequelize';
 import { model } from './config.js';
 
-/**
- * Academic Context Builder - Fetches and formats academic data
- * to provide context to the AI for better responses
- */
-
 export class AcademicContextBuilder {
   constructor(models) {
     this.models = models;
+  }
+
+  async getStudentByUserId(userId) {
+    const { Student } = this.models;
+    if (!userId) return null;
+    try {
+      return await Student.findOne({ where: { userId } });
+    } catch (error) {
+      console.error('Error fetching student by userId:', error);
+      return null;
+    }
+  }
+
+  async loadFullStudentById(studentId) {
+    if (!studentId) return null;
+    try {
+      const fullStudent = await this.models.Student.findByPk(studentId, {
+        include: [
+          { model: this.models.User, as: 'user' },
+          { model: this.models.Class, as: 'class' },
+          {
+            model: this.models.Result,
+            as: 'results',
+            include: [
+              {
+                model: this.models.Exam,
+                as: 'exam',
+                include: [{ model: this.models.Subject, as: 'subject', attributes: ['id', 'subjectName', 'code'] }]
+              },
+              {
+                model: this.models.Assignment,
+                as: 'assignment',
+                include: [{ model: this.models.Subject, as: 'subject', attributes: ['id', 'subjectName', 'code'] }]
+              }
+            ]
+          },
+          { model: this.models.Attendance, as: 'attendances' }
+        ]
+      });
+
+      if (!fullStudent) return null;
+
+      return {
+        ...fullStudent.toJSON(),
+        age: this.calculateAge(fullStudent.dateOfBirth),
+        averageScore: this.calculateAverageScore(fullStudent.results),
+        attendanceRate: this.calculateAttendanceRate(fullStudent.attendances),
+        weakSubjects: this.identifyWeakSubjects(fullStudent.results),
+        strongSubjects: this.identifyStrongSubjects(fullStudent.results),
+        subjectBreakdown: this.getSubjectBreakdown(fullStudent.results)
+      };
+    } catch (error) {
+      console.error('Error loading full student:', error);
+      return null;
+    }
   }
 
   calculateAge(dateOfBirth) {
@@ -232,7 +282,6 @@ export class AcademicContextBuilder {
     const { Student, User, Class, Result, Attendance, Subject, Exam, Assignment } = this.models;
     
     try {
-      // Fetch students with basic info
       const students = await Student.findAll({
         limit,
         include: [
@@ -242,14 +291,12 @@ export class AcademicContextBuilder {
         ]
       });
 
-      // Fetch all subjects for reference
       const subjects = await Subject.findAll();
       const subjectMap = {};
       subjects.forEach(s => {
         subjectMap[s.id] = s.subjectName;
       });
 
-      // Fetch results separately with subject info
       const studentIds = students.map(s => s.id);
       const allResults = await Result.findAll({
         where: { studentId: studentIds },
@@ -277,7 +324,6 @@ export class AcademicContextBuilder {
         ]
       });
 
-      // Group results by student
       const resultsByStudent = {};
       allResults.forEach(r => {
         if (!resultsByStudent[r.studentId]) {
@@ -392,7 +438,6 @@ export class AcademicContextBuilder {
   async getAttendanceSummary() {
     const { Attendance } = this.models;
     
-    // Simple query without complex joins to avoid SQL errors
     const attendances = await Attendance.findAll();
 
     const total = attendances.length;
@@ -435,13 +480,11 @@ export class AcademicContextBuilder {
     }
   }
 
-  // Get detailed subject breakdown for a student
   getSubjectBreakdown(results) {
     if (!results || results.length === 0) return {};
     
     const subjectScores = {};
     results.forEach(r => {
-      // Try to get subject name from exam or assignment
       let subjectName = null;
       
       if (r.exam && r.exam.subject) {
@@ -450,7 +493,6 @@ export class AcademicContextBuilder {
         subjectName = r.assignment.subject.subjectName;
       }
       
-      // Skip if no subject name found
       if (!subjectName) return;
       
       if (!subjectScores[subjectName]) {
@@ -462,7 +504,6 @@ export class AcademicContextBuilder {
       subjectScores[subjectName].count += 1;
     });
 
-    // Calculate averages
     const breakdown = {};
     Object.entries(subjectScores).forEach(([subject, data]) => {
       breakdown[subject] = {
@@ -474,7 +515,6 @@ export class AcademicContextBuilder {
     return breakdown;
   }
 
-  // Helper methods
   calculateAverageScore(results) {
     if (!results || results.length === 0) return 0;
     const sum = results.reduce((acc, r) => acc + parseFloat(r.percentage || 0), 0);
@@ -558,12 +598,25 @@ export class AcademicContextBuilder {
     return (sum / allResults.length).toFixed(2);
   }
 
-  async buildContextForQuery(query) {
-    // ALWAYS load comprehensive data for any query
-    // This ensures AI can answer follow-up questions about any student
+  async buildContextForQuery(query, user = null) {
     let context = {};
 
-    // Load all essential data for comprehensive responses
+    const role = user?.role;
+    const isStudentScoped = role === 'student';
+
+    if (isStudentScoped) {
+      const student = await this.getStudentByUserId(user?.id);
+
+      if (student) {
+        const full = await this.loadFullStudentById(student.id);
+        if (full) {
+          context.specificStudent = full;
+        }
+      }
+
+      return context;
+    }
+
     const safeLoad = async (key, loaderFn, fallbackValue) => {
       try {
         context[key] = await loaderFn();
@@ -575,7 +628,7 @@ export class AcademicContextBuilder {
       }
     };
 
-    await safeLoad('students', () => this.getStudentsData(50), []); // Load up to 50 students with full details
+    await safeLoad('students', () => this.getStudentsData(50), []);
     await safeLoad('topPerformers', () => this.getTopPerformers(10), []);
     await safeLoad('studentsNeedingImprovement', () => this.getStudentsNeedingImprovement(50), []);
     await safeLoad('classStats', () => this.getClassStats(), []);
@@ -583,7 +636,18 @@ export class AcademicContextBuilder {
     await safeLoad('attendanceSummary', () => this.getAttendanceSummary(), null);
 
     const normalizedQuery = String(query || '').toLowerCase();
+
+    const wantsWholeSchool =
+      normalizedQuery.includes('whole school') ||
+      normalizedQuery.includes('entire school') ||
+      normalizedQuery.includes('in the school') ||
+      normalizedQuery.includes('in school') ||
+      normalizedQuery.includes('all students') ||
+      normalizedQuery.includes('total students') ||
+      normalizedQuery.includes('total number');
+
     const wantsOverallGender =
+      wantsWholeSchool ||
       normalizedQuery.includes('gender ratio') ||
       normalizedQuery.includes('girls') ||
       normalizedQuery.includes('boys') ||
@@ -658,14 +722,10 @@ export class AcademicContextBuilder {
       }
     }
 
-    // Search for specific student if name mentioned in query
-    // Extract possible names (handle multi-word names like "Geeta Kumari")
     const queryWords = query.split(/\s+/);
     let foundStudent = null;
     
-    // Try matching individual words and combinations
     for (let i = 0; i < queryWords.length; i++) {
-      // Try single word
       if (queryWords[i].length > 2 && /^[A-Za-z]+$/.test(queryWords[i])) {
         const studentData = await this.searchStudentByName(queryWords[i]);
         if (studentData.length > 0) {
@@ -674,7 +734,6 @@ export class AcademicContextBuilder {
         }
       }
       
-      // Try two-word combination (e.g., "Geeta Kumari")
       if (i < queryWords.length - 1) {
         const twoWords = `${queryWords[i]} ${queryWords[i + 1]}`;
         if (/^[A-Za-z\s]+$/.test(twoWords) && twoWords.length > 3) {
@@ -688,44 +747,9 @@ export class AcademicContextBuilder {
     }
     
     if (foundStudent) {
-      try {
-        const fullStudent = await this.models.Student.findByPk(foundStudent.id, {
-          include: [
-            { model: this.models.User, as: 'user' },
-            { model: this.models.Class, as: 'class' },
-            { 
-              model: this.models.Result, 
-              as: 'results',
-              include: [
-                { 
-                  model: this.models.Exam, 
-                  as: 'exam',
-                  include: [{ model: this.models.Subject, as: 'subject', attributes: ['id', 'subjectName', 'code'] }]
-                },
-                { 
-                  model: this.models.Assignment, 
-                  as: 'assignment',
-                  include: [{ model: this.models.Subject, as: 'subject', attributes: ['id', 'subjectName', 'code'] }]
-                }
-              ]
-            },
-            { model: this.models.Attendance, as: 'attendances' }
-          ]
-        });
-        
-        if (fullStudent) {
-          context.specificStudent = {
-            ...fullStudent.toJSON(),
-            age: this.calculateAge(fullStudent.dateOfBirth),
-            averageScore: this.calculateAverageScore(fullStudent.results),
-            attendanceRate: this.calculateAttendanceRate(fullStudent.attendances),
-            weakSubjects: this.identifyWeakSubjects(fullStudent.results),
-            strongSubjects: this.identifyStrongSubjects(fullStudent.results),
-            subjectBreakdown: this.getSubjectBreakdown(fullStudent.results)
-          };
-        }
-      } catch (error) {
-        console.error('Error loading specific student:', error);
+      const full = await this.loadFullStudentById(foundStudent.id);
+      if (full) {
+        context.specificStudent = full;
       }
     }
 
