@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { announcementsAPI, classesAPI } from '../services/api';
+import { handleError } from '../utils/errorHandler';
 import { useAuth } from '../contexts/AuthContext';
 
 const AnnouncementFormModal = ({ isOpen, onClose, onSuccess, announcement = null }) => {
@@ -52,17 +53,20 @@ const AnnouncementFormModal = ({ isOpen, onClose, onSuccess, announcement = null
     setLoading(true);
 
     try {
+      // ensure empty string for classId becomes null
+      const submitData = { ...formData, classId: formData.classId || null };
       if (announcement) {
-        await announcementsAPI.update(announcement.id, formData);
+        await announcementsAPI.update(announcement.id, submitData);
         toast.success('Announcement updated!');
       } else {
-        await announcementsAPI.create(formData);
+        await announcementsAPI.create(submitData);
         toast.success('Announcement created!');
       }
       onSuccess();
       onClose();
     } catch (error) {
-      toast.error(error.message || 'Failed to save announcement');
+      // developers can inspect underlying error in console via handler
+      handleError(error, 'Unable to save announcement.');
     } finally {
       setLoading(false);
     }

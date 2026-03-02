@@ -74,7 +74,7 @@ const ExamFormModal = ({ isOpen, onClose, onSuccess, exam = null }) => {
       onSuccess();
       onClose();
     } catch (error) {
-      toast.error(error.message || 'Failed to save exam');
+      handleError(error, 'Unable to save exam.');
     } finally {
       setLoading(false);
     }

@@ -66,7 +66,7 @@ const AttendanceFormModal = ({ isOpen, onClose, onSuccess, attendance = null }) 
       onSuccess();
       onClose();
     } catch (error) {
-      toast.error(error.message || 'Failed to save attendance');
+      handleError(error, 'Unable to save attendance.');
     } finally {
       setLoading(false);
     }

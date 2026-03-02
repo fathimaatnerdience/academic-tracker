@@ -117,7 +117,7 @@ const TeacherFormModal = ({ isOpen, onClose, onSuccess, teacher = null }) => {
       }, 100);
     } catch (error) {
       console.error('Error saving teacher:', error);
-      toast.error(error.message || 'Failed to save teacher');
+      handleError(error, 'Unable to save teacher.');
     } finally {
       setLoading(false);
     }

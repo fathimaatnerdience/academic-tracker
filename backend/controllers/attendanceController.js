@@ -1,7 +1,7 @@
 import { Attendance, Student, Lesson, Subject, User } from '../models/index.js';
 import { Op } from 'sequelize';
 
-export const getAttendances = async (req, res) => {
+export const getAttendances = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, studentId, lessonId, date } = req.query;
     const offset = (page - 1) * limit;
@@ -36,11 +36,11 @@ export const getAttendances = async (req, res) => {
       totalItems: count
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const getAttendance = async (req, res) => {
+export const getAttendance = async (req, res, next) => {
   try {
     const attendance = await Attendance.findByPk(req.params.id, {
       include: [
@@ -59,20 +59,20 @@ export const getAttendance = async (req, res) => {
     
     res.status(200).json({ success: true, data: data });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const createAttendance = async (req, res) => {
+export const createAttendance = async (req, res, next) => {
   try {
     const attendance = await Attendance.create(req.body);
     res.status(201).json({ success: true, data: attendance });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const updateAttendance = async (req, res) => {
+export const updateAttendance = async (req, res, next) => {
   try {
     const attendance = await Attendance.findByPk(req.params.id);
     if (!attendance) {
@@ -81,11 +81,11 @@ export const updateAttendance = async (req, res) => {
     await attendance.update(req.body);
     res.status(200).json({ success: true, data: attendance });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const deleteAttendance = async (req, res) => {
+export const deleteAttendance = async (req, res, next) => {
   try {
     const attendance = await Attendance.findByPk(req.params.id);
     if (!attendance) {
@@ -94,6 +94,6 @@ export const deleteAttendance = async (req, res) => {
     await attendance.destroy();
     res.status(200).json({ success: true, message: 'Attendance deleted' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };

@@ -70,7 +70,7 @@ const AssignmentFormModal = ({ isOpen, onClose, onSuccess, assignment = null }) 
         onSuccess();
       }, 100);
     } catch (error) {
-      toast.error(error.message || 'Failed to save assignment');
+      handleError(error, 'Unable to save assignment.');
     } finally {
       setLoading(false);
     }

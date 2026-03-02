@@ -20,7 +20,9 @@ export const globalSearch = async (req, res, next) => {
     }
 
     const searchTerm = q.trim();
-    const limit = 10;
+    // allow client to specify how many results they want (capped at 100)
+    let limit = parseInt(req.query.limit) || 50;
+    if (limit > 100) limit = 100;
     const results = [];
 
     // Search Students
@@ -125,7 +127,7 @@ export const globalSearch = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      results: results.slice(0, 20)
+      results // caller can request a limit if needed
     });
   } catch (error) {
     next(error);

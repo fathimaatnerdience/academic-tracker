@@ -64,7 +64,11 @@ const EventFormModal = ({ isOpen, onClose, onSuccess, event = null }) => {
       onSuccess();
       onClose();
     } catch (error) {
-      toast.error(error.message || 'Failed to save event');
+      // show a generic friendly message regardless of underlying error
+      const userMsg = event ? 'Unable to update event. Please try again.' : 'Unable to create event. Please try again.';
+      toast.error(userMsg);
+      // developer can still inspect error in console if needed
+      console.error('Event save failed:', error);
     } finally {
       setLoading(false);
     }

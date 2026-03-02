@@ -128,7 +128,7 @@ const StudentFormModal = ({ isOpen, onClose, onSuccess, student = null }) => {
       }, 100);
     } catch (error) {
       console.error('Error saving student:', error);
-      toast.error(error.message || 'Failed to save student');
+      handleError(error, 'Unable to save student.');
     } finally {
       setLoading(false);
     }
