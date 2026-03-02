@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { subjectsAPI } from '../services/api';
+import { handleError } from '../utils/errorHandler';
 
 const SubjectFormModal = ({ isOpen, onClose, onSuccess, subject = null }) => {
   const [loading, setLoading] = useState(false);
@@ -46,7 +47,7 @@ const SubjectFormModal = ({ isOpen, onClose, onSuccess, subject = null }) => {
         onSuccess();
       }, 100);
     } catch (error) {
-      toast.error(error.message || 'Failed to save subject');
+      handleError(error, 'Unable to save subject.');
     } finally {
       setLoading(false);
     }

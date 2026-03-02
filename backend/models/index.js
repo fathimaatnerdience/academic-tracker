@@ -83,7 +83,6 @@ Attendance.belongsTo(Lesson, { foreignKey: 'lessonId', as: 'lesson' });
 
 // Event associations
 Event.belongsTo(Class, { foreignKey: 'classId', as: 'class' });
-Event.belongsTo(User, { foreignKey: 'organizerId', as: 'organizer' });
 
 // Announcement associations
 Announcement.belongsTo(Class, { foreignKey: 'classId', as: 'class' });

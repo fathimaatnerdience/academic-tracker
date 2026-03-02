@@ -31,11 +31,8 @@ api.interceptors.response.use(
     
     // Log error for developers (console only)
     if (process.env.NODE_ENV === 'development') {
-      console.error('API Error:', {
-        status: status,
-        message: responseData?.message,
-        url: error.config?.url
-      });
+      // log concise info instead of dumping entire object
+      console.error('API Error:', 'status=', status, 'message=', responseData?.message, 'url=', error.config?.url);
     }
     
     // Handle authentication errors - Auto logout

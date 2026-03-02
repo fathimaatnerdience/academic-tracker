@@ -1,7 +1,7 @@
 import { Assignment, Subject, Class, Teacher, User } from '../models/index.js';
 import { Op } from 'sequelize';
 
-export const getAssignments = async (req, res) => {
+export const getAssignments = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, search = '', classId, subjectId, teacherId } = req.query;
     const offset = (page - 1) * limit;
@@ -32,11 +32,11 @@ export const getAssignments = async (req, res) => {
       totalItems: count
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const getAssignment = async (req, res) => {
+export const getAssignment = async (req, res, next) => {
   try {
     const assignment = await Assignment.findByPk(req.params.id, {
       include: [
@@ -50,20 +50,20 @@ export const getAssignment = async (req, res) => {
     }
     res.status(200).json({ success: true, data: assignment });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const createAssignment = async (req, res) => {
+export const createAssignment = async (req, res, next) => {
   try {
     const assignment = await Assignment.create(req.body);
     res.status(201).json({ success: true, data: assignment });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const updateAssignment = async (req, res) => {
+export const updateAssignment = async (req, res, next) => {
   try {
     const assignment = await Assignment.findByPk(req.params.id);
     if (!assignment) {
@@ -72,11 +72,11 @@ export const updateAssignment = async (req, res) => {
     await assignment.update(req.body);
     res.status(200).json({ success: true, data: assignment });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const deleteAssignment = async (req, res) => {
+export const deleteAssignment = async (req, res, next) => {
   try {
     const assignment = await Assignment.findByPk(req.params.id);
     if (!assignment) {
@@ -85,6 +85,6 @@ export const deleteAssignment = async (req, res) => {
     await assignment.destroy();
     res.status(200).json({ success: true, message: 'Assignment deleted' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };

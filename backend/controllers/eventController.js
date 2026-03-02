@@ -1,7 +1,8 @@
 import { Event, Class } from '../models/index.js';
 import { Op } from 'sequelize';
+import { ErrorResponse } from '../middleware/error.js';
 
-export const getEvents = async (req, res) => {
+export const getEvents = async (req, res, next) => {
   try {
     console.log('Fetching events, user:', req.user);
     const { page = 1, limit = 10, search = '', classId, eventType } = req.query;
@@ -12,10 +13,8 @@ export const getEvents = async (req, res) => {
     if (classId) where.classId = classId;
     if (eventType) where.eventType = eventType;
 
-    // Exclude organizerId as it doesn't exist in the database
     const { count, rows } = await Event.findAndCountAll({
       where,
-      attributes: { exclude: ['organizerId'] },
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [['startDate', 'DESC']]
@@ -31,15 +30,13 @@ export const getEvents = async (req, res) => {
       totalItems: count
     });
   } catch (error) {
-    console.error('Error in getEvents:', error);
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const getEvent = async (req, res) => {
+export const getEvent = async (req, res, next) => {
   try {
     const event = await Event.findByPk(req.params.id, {
-      attributes: { exclude: ['organizerId'] },
       include: [
         { model: Class, as: 'class' }
       ]
@@ -49,11 +46,11 @@ export const getEvent = async (req, res) => {
     }
     res.status(200).json({ success: true, data: event });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const createEvent = async (req, res) => {
+export const createEvent = async (req, res, next) => {
   try {
     // Handle empty string classId - convert to null
     const eventData = { ...req.body };
@@ -66,11 +63,11 @@ export const createEvent = async (req, res) => {
     const event = await Event.create(eventData);
     res.status(201).json({ success: true, data: event });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const updateEvent = async (req, res) => {
+export const updateEvent = async (req, res, next) => {
   try {
     const event = await Event.findByPk(req.params.id);
     if (!event) {
@@ -87,11 +84,12 @@ export const updateEvent = async (req, res) => {
     await event.update(eventData);
     res.status(200).json({ success: true, data: event });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('updateEvent error:', error);
+    next(new ErrorResponse('Unable to update event. Please try again later.', 500));
   }
 };
 
-export const deleteEvent = async (req, res) => {
+export const deleteEvent = async (req, res, next) => {
   try {
     const event = await Event.findByPk(req.params.id);
     if (!event) {
@@ -100,6 +98,6 @@ export const deleteEvent = async (req, res) => {
     await event.destroy();
     res.status(200).json({ success: true, message: 'Event deleted' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };

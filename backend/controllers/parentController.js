@@ -1,11 +1,10 @@
-import { Parent, User, Student, Teacher } from '../models/index.js';
+import { Parent, User, Student } from '../models/index.js';
 import { Op } from 'sequelize';
-import bcrypt from 'bcryptjs';
 
 // @desc    Get all parents
 // @route   GET /api/parents
 // @access  Private (Admin, Teacher)
-export const getParents = async (req, res) => {
+export const getParents = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, search = '' } = req.query;
     const offset = (page - 1) * limit;
@@ -48,14 +47,14 @@ export const getParents = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching parents:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    next(error);
   }
 };
 
 // @desc    Get single parent
 // @route   GET /api/parents/:id
 // @access  Private
-export const getParent = async (req, res) => {
+export const getParent = async (req, res, next) => {
   try {
     const parent = await Parent.findByPk(req.params.id, {
       include: [
@@ -75,14 +74,14 @@ export const getParent = async (req, res) => {
     res.status(200).json({ success: true, data: parent });
   } catch (error) {
     console.error('Error fetching parent:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    next(error);
   }
 };
 
 // @desc    Create parent
 // @route   POST /api/parents
 // @access  Private (Admin only)
-export const createParent = async (req, res) => {
+export const createParent = async (req, res, next) => {
   try {
 
     
@@ -150,17 +149,14 @@ if (!parentData.relationship) {
     });
   } catch (error) {
     console.error('Error creating parent:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
-    });
+    next(error);
   }
 };
 
 // @desc    Update parent
 // @route   PUT /api/parents/:id
 // @access  Private (Admin only)
-export const updateParent = async (req, res) => {
+export const updateParent = async (req, res, next) => {
   try {
     const parent = await Parent.findByPk(req.params.id, {
       include: [{ model: User, as: 'user' }]
@@ -217,17 +213,14 @@ export const updateParent = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating parent:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
-    });
+    next(error);
   }
 };
 
 // @desc    Delete parent
 // @route   DELETE /api/parents/:id
 // @access  Private (Admin only)
-export const deleteParent = async (req, res) => {
+export const deleteParent = async (req, res, next) => {
   try {
     const parent = await Parent.findByPk(req.params.id, {
       include: [{ model: User, as: 'user' }]
@@ -253,9 +246,6 @@ export const deleteParent = async (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting parent:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server error' 
-    });
+    next(error);
   }
 };

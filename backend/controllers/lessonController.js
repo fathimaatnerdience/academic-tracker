@@ -1,7 +1,7 @@
 import { Lesson, Subject, Class, Teacher, User } from '../models/index.js';
 import { Op } from 'sequelize';
 
-export const getLessons = async (req, res) => {
+export const getLessons = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, search = '', classId, teacherId, dayOfWeek } = req.query;
     const offset = (page - 1) * limit;
@@ -32,11 +32,12 @@ export const getLessons = async (req, res) => {
       totalItems: count
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const getLesson = async (req, res) => {
+
+export const getLesson = async (req, res, next) => {
   try {
     const lesson = await Lesson.findByPk(req.params.id, {
       include: [
@@ -45,27 +46,25 @@ export const getLesson = async (req, res) => {
         { model: Teacher, as: 'teacher' }
       ]
     });
-
     if (!lesson) {
       return res.status(404).json({ success: false, message: 'Lesson not found' });
     }
-
     res.status(200).json({ success: true, data: lesson });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const createLesson = async (req, res) => {
+export const createLesson = async (req, res, next) => {
   try {
     const lesson = await Lesson.create(req.body);
     res.status(201).json({ success: true, data: lesson });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const updateLesson = async (req, res) => {
+export const updateLesson = async (req, res, next) => {
   try {
     const lesson = await Lesson.findByPk(req.params.id);
     if (!lesson) {
@@ -74,11 +73,11 @@ export const updateLesson = async (req, res) => {
     await lesson.update(req.body);
     res.status(200).json({ success: true, data: lesson });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const deleteLesson = async (req, res) => {
+export const deleteLesson = async (req, res, next) => {
   try {
     const lesson = await Lesson.findByPk(req.params.id);
     if (!lesson) {
@@ -87,6 +86,6 @@ export const deleteLesson = async (req, res) => {
     await lesson.destroy();
     res.status(200).json({ success: true, message: 'Lesson deleted' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };

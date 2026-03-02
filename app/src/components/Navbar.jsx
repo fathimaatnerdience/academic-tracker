@@ -4,11 +4,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { searchAPI } from '../services/api';
 import { Search, LogOut, X } from 'lucide-react';
 
-const Navbar = () => {
+const Navbar = ({ onMenuToggle }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [showResults, setShowResults] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const searchRef = useRef(null);
   const { user, logout } = useAuth();
@@ -19,7 +18,8 @@ const Navbar = () => {
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
-        setShowResults(false);
+        // hide dropdown by clearing results
+        setSearchResults([]);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -34,7 +34,6 @@ const Navbar = () => {
 
     if (searchQuery.trim().length < 2) {
       setSearchResults([]);
-      setShowResults(false);
       return;
     }
 
@@ -43,7 +42,6 @@ const Navbar = () => {
       try {
         const response = await searchAPI.globalSearch(searchQuery);
         setSearchResults(response.results || []);
-        setShowResults(true);
       } catch (error) {
         setSearchResults([]);
       } finally {
@@ -64,7 +62,8 @@ const Navbar = () => {
   };
 
   const handleResultClick = (result) => {
-    setShowResults(false);
+    // hide dropdown by clearing results
+    setSearchResults([]);
     setSearchQuery('');
     
     // Navigate based on result type
@@ -89,7 +88,6 @@ const Navbar = () => {
   const clearSearch = () => {
     setSearchQuery('');
     setSearchResults([]);
-    setShowResults(false);
   };
 
   const getTypeIcon = (type) => {
@@ -105,6 +103,14 @@ const Navbar = () => {
   return (
     <div className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
+        {/* Mobile menu button */}
+        <div className="mr-4 md:hidden">
+          <button onClick={onMenuToggle} className="p-2 rounded-md hover:bg-gray-100">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
         {/* Search Bar */}
         <div className="flex-1 max-w-xl relative" ref={searchRef}>
           <div className="relative">
@@ -114,7 +120,7 @@ const Navbar = () => {
               placeholder="Search students, teachers, parents, classes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => searchQuery.length >= 2 && setShowResults(true)}
+
               className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             {searchQuery && (
@@ -128,7 +134,7 @@ const Navbar = () => {
           </div>
 
           {/* Search Results Dropdown */}
-          {showResults && (
+          {(isSearching || searchResults.length > 0) && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-96 overflow-y-auto z-50">
               {isSearching ? (
                 <div className="p-4 text-center text-gray-500">Searching...</div>
