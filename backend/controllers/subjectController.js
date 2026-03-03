@@ -4,7 +4,7 @@ import { Op } from 'sequelize';
 // @desc    Get all subjects
 // @route   GET /api/subjects
 // @access  Private
-export const getSubjects = async (req, res) => {
+export const getSubjects = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, search = '' } = req.query;
     const offset = (page - 1) * limit;
@@ -34,14 +34,14 @@ export const getSubjects = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching subjects:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    next(error);
   }
 };
 
 // @desc    Get single subject
 // @route   GET /api/subjects/:id
 // @access  Private
-export const getSubject = async (req, res) => {
+export const getSubject = async (req, res, next) => {
   try {
     const subject = await Subject.findByPk(req.params.id);
 
@@ -52,14 +52,14 @@ export const getSubject = async (req, res) => {
     res.status(200).json({ success: true, data: subject });
   } catch (error) {
     console.error('Error fetching subject:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    next(error);
   }
 };
 
 // @desc    Create subject
 // @route   POST /api/subjects
 // @access  Private (Admin only)
-export const createSubject = async (req, res) => {
+export const createSubject = async (req, res, next) => {
   try {
     const { subjectName, code, description, gradeLevel, type, credits } = req.body;
 
@@ -78,14 +78,14 @@ export const createSubject = async (req, res) => {
     res.status(201).json({ success: true, data: subject });
   } catch (error) {
     console.error('Error creating subject:', error);
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
 // @desc    Update subject
 // @route   PUT /api/subjects/:id
 // @access  Private (Admin only)
-export const updateSubject = async (req, res) => {
+export const updateSubject = async (req, res, next) => {
   try {
     const subject = await Subject.findByPk(req.params.id);
 
@@ -98,14 +98,14 @@ export const updateSubject = async (req, res) => {
     res.status(200).json({ success: true, data: subject });
   } catch (error) {
     console.error('Error updating subject:', error);
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
 // @desc    Delete subject
 // @route   DELETE /api/subjects/:id
 // @access  Private (Admin only)
-export const deleteSubject = async (req, res) => {
+export const deleteSubject = async (req, res, next) => {
   try {
     const subject = await Subject.findByPk(req.params.id);
 
@@ -118,6 +118,6 @@ export const deleteSubject = async (req, res) => {
     res.status(200).json({ success: true, message: 'Subject deleted successfully' });
   } catch (error) {
     console.error('Error deleting subject:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    next(error);
   }
 };

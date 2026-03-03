@@ -1,7 +1,7 @@
 import { Class, Teacher, Student, User } from '../models/index.js';
 import { Op } from 'sequelize';
 
-export const getClasses = async (req, res) => {
+export const getClasses = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, search = '' } = req.query;
     const offset = (page - 1) * limit;
@@ -37,11 +37,11 @@ export const getClasses = async (req, res) => {
       totalItems: count
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const getClass = async (req, res) => {
+export const getClass = async (req, res, next) => {
   try {
     const classData = await Class.findByPk(req.params.id, {
       include: [
@@ -59,11 +59,11 @@ export const getClass = async (req, res) => {
 
     res.status(200).json({ success: true, data: data });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const createClass = async (req, res) => {
+export const createClass = async (req, res, next) => {
   try {
     const { name, gradeLevel, section, capacity, supervisorId, academicYear } = req.body;
 
@@ -116,11 +116,11 @@ export const createClass = async (req, res) => {
       });
     }
     
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const updateClass = async (req, res) => {
+export const updateClass = async (req, res, next) => {
   try {
     const classData = await Class.findByPk(req.params.id);
 
@@ -144,11 +144,11 @@ export const updateClass = async (req, res) => {
     await classData.update(req.body);
     res.status(200).json({ success: true, data: classData });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const deleteClass = async (req, res) => {
+export const deleteClass = async (req, res, next) => {
   try {
     const classData = await Class.findByPk(req.params.id);
 
@@ -159,6 +159,6 @@ export const deleteClass = async (req, res) => {
     await classData.destroy();
     res.status(200).json({ success: true, message: 'Class deleted' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };

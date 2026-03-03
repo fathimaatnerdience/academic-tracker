@@ -96,7 +96,7 @@ const handleSubmit = async (e) => {
       onSuccess();
       onClose();
     } catch (error) {
-      toast.error(error.message || 'Failed to save result');
+      handleError(error, 'Unable to save result.');
     } finally {
       setLoading(false);
     }

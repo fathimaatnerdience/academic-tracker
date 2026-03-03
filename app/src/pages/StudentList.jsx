@@ -1,16 +1,9 @@
-// ============================================
-// UPDATED STUDENTLIST - PROPER ERROR HANDLING
-// File: frontend/src/pages/StudentList.jsx - UPDATE ERROR HANDLING ONLY
-// ============================================
-
-// Update only the error handling parts of your StudentList.jsx:
-
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { studentsAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import { Plus, Search, Edit, Trash2 } from 'lucide-react';
 import StudentFormModal from '../components/StudentFormModal';
-import { handleError, debounce } from '../utils/errorHandler';  // ← UPDATED IMPORT
+import { handleError, debounce } from '../utils/errorHandler';  
 import { useAuth } from '../contexts/AuthContext';
 
 const StudentList = () => {
@@ -24,7 +17,7 @@ const StudentList = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
 
-  // ✅ FIXED: Simplified fetch with automatic error handling
+  //  Simplified fetch with automatic error handling
   const fetchStudents = useCallback(async (page = currentPage, search = searchTerm) => {
     try {
       setLoading(true);
@@ -38,7 +31,7 @@ const StudentList = () => {
       setStudents(studentsData);
       setTotalPages(response?.totalPages || 1);
     } catch (error) {
-      // ✅ ONE line - handles everything (message + toast + deduplication)
+      //  handles everything (message + toast + deduplication)
       handleError(error, 'Failed to load students');
     } finally {
       setLoading(false);
@@ -64,7 +57,7 @@ const StudentList = () => {
     fetchStudents(currentPage, searchTerm);
   }, [currentPage]);
 
-  // ✅ FIXED: Simplified delete with automatic error handling
+  //  Simplified delete with automatic error handling
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this student?')) {
       return;
@@ -75,7 +68,7 @@ const StudentList = () => {
       toast.success('Student deleted successfully');
       fetchStudents();
     } catch (error) {
-      // ✅ ONE line - handles everything
+      // handles everything
       handleError(error, 'Failed to delete student');
     }
   };

@@ -1,7 +1,7 @@
 import { Announcement, Class, User } from '../models/index.js';
 import { Op } from 'sequelize';
 
-export const getAnnouncements = async (req, res) => {
+export const getAnnouncements = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, search = '', classId, targetAudience } = req.query;
     const offset = (page - 1) * limit;
@@ -30,11 +30,11 @@ export const getAnnouncements = async (req, res) => {
       totalItems: count
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const getAnnouncement = async (req, res) => {
+export const getAnnouncement = async (req, res, next) => {
   try {
     const announcement = await Announcement.findByPk(req.params.id, {
       include: [
@@ -47,11 +47,11 @@ export const getAnnouncement = async (req, res) => {
     }
     res.status(200).json({ success: true, data: announcement });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const createAnnouncement = async (req, res) => {
+export const createAnnouncement = async (req, res, next) => {
   try {
     // Use the authenticated user's ID for publishedBy instead of trusting frontend value
     // Remove any publishedBy from request body to prevent injection
@@ -74,24 +74,48 @@ export const createAnnouncement = async (req, res) => {
     const announcement = await Announcement.create(announcementData);
     res.status(201).json({ success: true, data: announcement });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const updateAnnouncement = async (req, res) => {
+export const updateAnnouncement = async (req, res, next) => {
   try {
     const announcement = await Announcement.findByPk(req.params.id);
     if (!announcement) {
       return res.status(404).json({ success: false, message: 'Announcement not found' });
     }
-    await announcement.update(req.body);
+
+    // Validate new classId if it's being changed
+    const { classId, publishedBy, ...rest } = req.body;
+    let validClassId = announcement.classId; // default to existing
+    if (classId !== undefined) {
+      if (classId === '' || classId === null) {
+        validClassId = null;
+      } else {
+        const classExists = await Class.findByPk(classId);
+        if (classExists) {
+          validClassId = classId;
+        } else {
+          // invalid classId provided -> ignore it rather than throw
+          validClassId = null;
+        }
+      }
+    }
+
+    // ensure publishedBy is not overwritten
+    const updateData = {
+      ...rest,
+      classId: validClassId
+    };
+
+    await announcement.update(updateData);
     res.status(200).json({ success: true, data: announcement });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const deleteAnnouncement = async (req, res) => {
+export const deleteAnnouncement = async (req, res, next) => {
   try {
     const announcement = await Announcement.findByPk(req.params.id);
     if (!announcement) {
@@ -100,6 +124,6 @@ export const deleteAnnouncement = async (req, res) => {
     await announcement.destroy();
     res.status(200).json({ success: true, message: 'Announcement deleted' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { parentsAPI, studentsAPI } from '../services/api';
+import handleError from '../utils/errorHandler';
 
 const ParentFormModal = ({ isOpen, onClose, onSuccess, parent = null }) => {
   const [loading, setLoading] = useState(false);
@@ -127,7 +128,7 @@ const ParentFormModal = ({ isOpen, onClose, onSuccess, parent = null }) => {
       onClose();
     } catch (error) {
       console.error('Error saving parent:', error);
-      toast.error(error.response?.data?.message || 'Failed to save parent');
+      handleError(error);
     } finally {
       setLoading(false);
     }

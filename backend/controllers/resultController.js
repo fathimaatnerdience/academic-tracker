@@ -1,7 +1,7 @@
 import { Result, Student, Exam, Assignment, User, sequelize } from '../models/index.js';
 import { Op } from 'sequelize';
 
-export const getResults = async (req, res) => {
+export const getResults = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, studentId, examId, assignmentId } = req.query;
     const offset = (page - 1) * limit;
@@ -35,11 +35,11 @@ export const getResults = async (req, res) => {
       totalItems: count
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const getResult = async (req, res) => {
+export const getResult = async (req, res, next) => {
   try {
     const result = await Result.findByPk(req.params.id, {
       include: [
@@ -53,11 +53,11 @@ export const getResult = async (req, res) => {
     }
     res.status(200).json({ success: true, data: result });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const createResult = async (req, res) => {
+export const createResult = async (req, res, next) => {
   try {
     let { studentId, examId, assignmentId, marksObtained, totalMarks } = req.body;
 
@@ -117,11 +117,11 @@ export const createResult = async (req, res) => {
     });
     res.status(201).json({ success: true, data: result });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const updateResult = async (req, res) => {
+export const updateResult = async (req, res, next) => {
   try {
     const result = await Result.findByPk(req.params.id);
     if (!result) {
@@ -178,11 +178,11 @@ export const updateResult = async (req, res) => {
     });
     res.status(200).json({ success: true, data: result });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };
 
-export const deleteResult = async (req, res) => {
+export const deleteResult = async (req, res, next) => {
   try {
     const result = await Result.findByPk(req.params.id);
     if (!result) {
@@ -191,6 +191,6 @@ export const deleteResult = async (req, res) => {
     await result.destroy();
     res.status(200).json({ success: true, message: 'Result deleted' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    next(error);
   }
 };

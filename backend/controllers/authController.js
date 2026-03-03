@@ -1,9 +1,14 @@
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+import { Op } from 'sequelize';
 import User from '../models/User.js';
+import PasswordResetToken from '../models/PasswordResetToken.js';
 import Student from '../models/Student.js';
 import Teacher from '../models/Teacher.js';
 import Parent from '../models/Parent.js';
 import { ErrorResponse } from '../middleware/error.js';
+import nodemailer from 'nodemailer';
+import { sendEmail } from '../utils/email.js';
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -192,6 +197,97 @@ export const validateToken = async (req, res, next) => {
       data: {
         user: req.user
       }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Reset password using token
+// @route   POST /api/auth/resetpassword
+// @access  Public
+export const resetPassword = async (req, res, next) => {
+  try {
+    const { token, password } = req.body;
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    const record = await PasswordResetToken.findOne({
+      where: {
+        token: hashedToken,
+        expiresAt: { [Op.gt]: new Date() }
+      }
+    });
+
+    if (!record) {
+      return next(new ErrorResponse('Token is invalid or has expired', 400));
+    }
+
+    const user = await User.findByPk(record.userId);
+    if (!user) {
+      return next(new ErrorResponse('User not found', 404));
+    }
+
+    user.password = password;
+    await user.save();
+
+    // delete the token so it can't be reused
+    await record.destroy();
+
+    const authToken = generateToken(user.id);
+    res.status(200).json({ success: true, data: authToken });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Request password reset link
+// @route   POST /api/auth/forgotpassword
+// @access  Public
+export const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    // always respond with generic message to avoid user enumeration
+    const user = await User.findOne({ where: { email } });
+    if (user) {
+      // generate raw token and store hashed version
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+      const expiresAt = new Date(Date.now() + 3600000); // 1 hour
+
+      await PasswordResetToken.create({
+        userId: user.id,
+        token: hashedToken,
+        expiresAt
+      });
+
+      const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+      const message = `You requested a password reset. Click the link below to set a new password.\n\n${resetUrl}\n\nIf you did not request this, please ignore this email.`;
+
+      try {
+        const info = await sendEmail({
+          to: user.email,
+          subject: 'Password Reset Request',
+          text: message
+        });
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Reset link:', resetUrl);
+          if (info && info.messageId && nodemailer.getTestMessageUrl) {
+            // note: nodemailer may not be imported here, so wrap in try
+            try {
+              console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
+            } catch {}
+          }
+        }
+      } catch (err) {
+        // log failure but do not expose to user
+        console.error('Unable to send reset email', err);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'If an account with that email exists, a reset link has been sent.'
     });
   } catch (error) {
     next(error);

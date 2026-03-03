@@ -6,7 +6,9 @@ import {
   getMe,
   updateDetails,
   updatePassword,
-  validateToken
+  validateToken,
+  forgotPassword,
+  resetPassword
 } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 import validate from '../middleware/validate.js';
@@ -27,6 +29,15 @@ const loginValidation = [
   body('password').notEmpty().withMessage('Password is required')
 ];
 
+const forgotPasswordValidation = [
+  body('email').isEmail().withMessage('Please provide a valid email')
+];
+
+const resetPasswordValidation = [
+  body('token').notEmpty().withMessage('Token is required'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+];
+
 const updatePasswordValidation = [
   body('currentPassword').notEmpty().withMessage('Current password is required'),
   body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters')
@@ -35,6 +46,8 @@ const updatePasswordValidation = [
 // Routes
 router.post('/register', registerValidation, validate, register);
 router.post('/login', loginValidation, validate, login);
+router.post('/forgotpassword', forgotPasswordValidation, validate, forgotPassword);
+router.post('/resetpassword', resetPasswordValidation, validate, resetPassword);
 router.get('/me', protect, getMe);
 router.get('/validate', protect, validateToken);
 router.put('/updatedetails', protect, updateDetails);

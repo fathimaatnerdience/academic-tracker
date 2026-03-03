@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { classesAPI, teachersAPI } from '../services/api';
+import { handleError } from '../utils/errorHandler';
 
 const ClassFormModal = ({ isOpen, onClose, onSuccess, classData = null }) => {
   const [loading, setLoading] = useState(false);
@@ -76,7 +77,7 @@ const ClassFormModal = ({ isOpen, onClose, onSuccess, classData = null }) => {
         onSuccess();
       }, 100);
     } catch (error) {
-      toast.error(error.message || 'Failed to save class');
+      handleError(error, 'Unable to save class.');
     } finally {
       setLoading(false);
     }

@@ -75,7 +75,7 @@ const LessonFormModal = ({ isOpen, onClose, onSuccess, lesson = null }) => {
       onSuccess();
       onClose();
     } catch (error) {
-      toast.error(error.message || 'Failed to save lesson');
+      handleError(error, 'Unable to save lesson.');
     } finally {
       setLoading(false);
     }

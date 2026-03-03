@@ -7,7 +7,7 @@ const router = express.Router();
 
 const chatService = new AcademicChatService(models);
 
-router.post('/chat', protect, authorize('admin', 'teacher', 'student'), async (req, res) => {
+router.post('/chat', protect, authorize('admin', 'teacher', 'student'), async (req, res, next) => {
   try {
     const { message } = req.body;
     const user = req.user;
@@ -35,15 +35,11 @@ router.post('/chat', protect, authorize('admin', 'teacher', 'student'), async (r
     }
   } catch (error) {
     console.error('AI Chat Route Error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: error.message
-    });
+    next(error);
   }
 });
 
-router.post('/student-improvement/:studentId', protect, authorize('admin', 'teacher'), async (req, res) => {
+router.post('/student-improvement/:studentId', protect, authorize('admin', 'teacher'), async (req, res, next) => {
   try {
     const { studentId } = req.params;
 
@@ -63,15 +59,11 @@ router.post('/student-improvement/:studentId', protect, authorize('admin', 'teac
     }
   } catch (error) {
     console.error('Student Improvement Route Error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: error.message
-    });
+    next(error);
   }
 });
 
-router.post('/class-analysis/:classId', protect, authorize('admin', 'teacher'), async (req, res) => {
+router.post('/class-analysis/:classId', protect, authorize('admin', 'teacher'), async (req, res, next) => {
   try {
     const { classId } = req.params;
 
@@ -91,15 +83,11 @@ router.post('/class-analysis/:classId', protect, authorize('admin', 'teacher'), 
     }
   } catch (error) {
     console.error('Class Analysis Route Error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: error.message
-    });
+    next(error);
   }
 });
 
-router.delete('/clear-history', protect, authorize('admin', 'teacher'), async (req, res) => {
+router.delete('/clear-history', protect, authorize('admin', 'teacher'), async (req, res, next) => {
   try {
     const userId = req.user.id;
     chatService.clearHistory(userId);
@@ -110,15 +98,11 @@ router.delete('/clear-history', protect, authorize('admin', 'teacher'), async (r
     });
   } catch (error) {
     console.error('Clear History Route Error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: error.message
-    });
+    next(error);
   }
 });
 
-router.get('/health', async (req, res) => {
+router.get('/health', async (req, res, next) => {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     
@@ -128,11 +112,7 @@ router.get('/health', async (req, res) => {
       geminiConfigured: !!apiKey && apiKey.length > 10
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'AI service health check failed',
-      error: error.message
-    });
+    next(error);
   }
 });
 

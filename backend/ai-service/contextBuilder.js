@@ -6,6 +6,568 @@ export class AcademicContextBuilder {
     this.models = models;
   }
 
+  async getTeachersSummary(limit = 50) {
+    const { Teacher, User } = this.models;
+
+    try {
+      const teachers = await Teacher.findAll({
+        limit,
+        include: [{
+          model: User,
+          as: 'user',
+          required: false,
+          attributes: ['name', 'email']
+        }]
+      });
+
+      const total = await Teacher.count();
+
+      const items = teachers.map(t => {
+        const name = t.user?.name || t.name || 'Unknown';
+        const email = t.user?.email || t.email || null;
+        return {
+          id: t.id,
+          name,
+          email,
+          qualification: t.qualification ?? null,
+          specialization: t.specialization ?? null,
+          experience: t.experience ?? null
+        };
+      });
+
+      return {
+        total,
+        items
+      };
+    } catch (error) {
+      console.error('Error fetching teachers summary:', error);
+      return {
+        total: 0,
+        items: []
+      };
+    }
+  }
+
+  async getParentsSummary(limit = 50) {
+    const { Parent, User } = this.models;
+
+    try {
+      const parents = await Parent.findAll({
+        limit,
+        include: [{
+          model: User,
+          as: 'user',
+          required: false,
+          attributes: ['name', 'email']
+        }]
+      });
+
+      const total = await Parent.count();
+
+      const items = parents.map(p => {
+        const name = p.user?.name || p.name || 'Unknown';
+        const email = p.user?.email || p.email || null;
+        return {
+          id: p.id,
+          name,
+          email,
+          phone: p.phone ?? null,
+          occupation: p.occupation ?? null,
+          relationship: p.relationship ?? null
+        };
+      });
+
+      return { total, items };
+    } catch (error) {
+      console.error('Error fetching parents summary:', error);
+      return { total: 0, items: [] };
+    }
+  }
+
+  async getUpcomingEvents(limit = 10) {
+    const { Event } = this.models;
+
+    try {
+      const now = new Date();
+      const events = await Event.findAll({
+        where: {
+          startDate: {
+            [Op.gte]: now
+          }
+        },
+        order: [['startDate', 'ASC']],
+        limit
+      });
+
+      return events.map(e => ({
+        id: e.id,
+        title: e.title,
+        description: e.description,
+        startDate: e.startDate,
+        endDate: e.endDate,
+        location: e.location,
+        eventType: e.eventType
+      }));
+    } catch (error) {
+      console.error('Error fetching upcoming events:', error);
+      return [];
+    }
+  }
+
+  async getLatestAnnouncements(limit = 5) {
+    const { Announcement, User } = this.models;
+
+    try {
+      const now = new Date();
+      const announcements = await Announcement.findAll({
+        where: {
+          publishDate: {
+            [Op.lte]: now
+          },
+          [Op.or]: [
+            { expiryDate: null },
+            { expiryDate: { [Op.gte]: now } }
+          ]
+        },
+        order: [['publishDate', 'DESC']],
+        limit,
+        include: [{
+          model: User,
+          as: 'publisher',
+          required: false,
+          attributes: ['name']
+        }]
+      });
+
+      return announcements.map(a => ({
+        id: a.id,
+        title: a.title,
+        description: a.description,
+        priority: a.priority,
+        targetAudience: a.targetAudience,
+        publishDate: a.publishDate,
+        publishedBy: a.publisher?.name || 'Admin'
+      }));
+    } catch (error) {
+      console.error('Error fetching announcements:', error);
+      return [];
+    }
+  }
+
+  async getUpcomingExams(limit = 10) {
+    const { Exam, Subject, Class, Teacher, User } = this.models;
+
+    try {
+      const now = new Date();
+      const exams = await Exam.findAll({
+        where: {
+          examDate: {
+            [Op.gte]: now
+          }
+        },
+        order: [['examDate', 'ASC'], ['startTime', 'ASC']],
+        limit,
+        include: [
+          { model: Subject, as: 'subject', attributes: ['subjectName'] },
+          { model: Class, as: 'class', attributes: ['name', 'gradeLevel'] },
+          { 
+            model: Teacher, 
+            as: 'teacher',
+            include: [{ model: User, as: 'user', attributes: ['name'] }]
+          }
+        ]
+      });
+
+      return exams.map(e => ({
+        id: e.id,
+        title: e.title,
+        subject: e.subject?.subjectName || 'Unknown',
+        className: e.class?.name || 'Unknown',
+        gradeLevel: e.class?.gradeLevel,
+        examDate: e.examDate,
+        startTime: e.startTime,
+        endTime: e.endTime,
+        examType: e.examType,
+        totalMarks: e.totalMarks,
+        teacher: e.teacher?.user?.name || e.teacher?.name || 'Unknown'
+      }));
+    } catch (error) {
+      console.error('Error fetching upcoming exams:', error);
+      return [];
+    }
+  }
+
+  async getAssignmentsDue(limit = 10) {
+    const { Assignment, Subject, Class, Teacher, User } = this.models;
+
+    try {
+      const now = new Date();
+      const assignments = await Assignment.findAll({
+        where: {
+          dueDate: {
+            [Op.gte]: now
+          }
+        },
+        order: [['dueDate', 'ASC']],
+        limit,
+        include: [
+          { model: Subject, as: 'subject', attributes: ['subjectName'] },
+          { model: Class, as: 'class', attributes: ['name', 'gradeLevel'] },
+          { 
+            model: Teacher, 
+            as: 'teacher',
+            include: [{ model: User, as: 'user', attributes: ['name'] }]
+          }
+        ]
+      });
+
+      return assignments.map(a => ({
+        id: a.id,
+        title: a.title,
+        description: a.description,
+        subject: a.subject?.subjectName || 'Unknown',
+        className: a.class?.name || 'Unknown',
+        gradeLevel: a.class?.gradeLevel,
+        dueDate: a.dueDate,
+        totalMarks: a.totalMarks,
+        teacher: a.teacher?.user?.name || a.teacher?.name || 'Unknown'
+      }));
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+      return [];
+    }
+  }
+
+  async getClassesWithCapacity() {
+    const { Class, Student } = this.models;
+
+    try {
+      const classes = await Class.findAll({
+        include: [{
+          model: Student,
+          as: 'students',
+          attributes: ['id']
+        }]
+      });
+
+      return classes.map(c => ({
+        id: c.id,
+        name: c.name,
+        gradeLevel: c.gradeLevel,
+        section: c.section,
+        room: c.room,
+        capacity: c.capacity,
+        enrolled: c.students?.length || 0,
+        availableSeats: Math.max(0, (c.capacity || 0) - (c.students?.length || 0)),
+        academicYear: c.academicYear
+      }));
+    } catch (error) {
+      console.error('Error fetching class capacity:', error);
+      return [];
+    }
+  }
+
+  getExamAssignmentBreakdown(results) {
+    if (!results || results.length === 0) {
+      return { examAverage: 0, assignmentAverage: 0, examCount: 0, assignmentCount: 0 };
+    }
+
+    const examScores = [];
+    const assignmentScores = [];
+
+    results.forEach(r => {
+      const percentage = parseFloat(r.percentage || 0);
+      if (r.exam) {
+        examScores.push(percentage);
+      } else if (r.assignment) {
+        assignmentScores.push(percentage);
+      }
+    });
+
+    const examAverage = examScores.length > 0
+      ? (examScores.reduce((a, b) => a + b, 0) / examScores.length).toFixed(2)
+      : 0;
+    const assignmentAverage = assignmentScores.length > 0
+      ? (assignmentScores.reduce((a, b) => a + b, 0) / assignmentScores.length).toFixed(2)
+      : 0;
+
+    return {
+      examAverage: parseFloat(examAverage),
+      assignmentAverage: parseFloat(assignmentAverage),
+      examCount: examScores.length,
+      assignmentCount: assignmentScores.length,
+      examScores,
+      assignmentScores
+    };
+  }
+
+  getSubjectExamAssignmentBreakdown(results) {
+    if (!results || results.length === 0) return {};
+
+    const breakdown = {};
+
+    results.forEach(r => {
+      let subjectName = null;
+      let isExam = false;
+      let isAssignment = false;
+
+      if (r.exam && r.exam.subject) {
+        subjectName = r.exam.subject.subjectName;
+        isExam = true;
+      } else if (r.assignment && r.assignment.subject) {
+        subjectName = r.assignment.subject.subjectName;
+        isAssignment = true;
+      }
+
+      if (!subjectName) return;
+
+      if (!breakdown[subjectName]) {
+        breakdown[subjectName] = {
+          examScores: [],
+          assignmentScores: [],
+          examTotal: 0,
+          assignmentTotal: 0,
+          examCount: 0,
+          assignmentCount: 0
+        };
+      }
+
+      const percentage = parseFloat(r.percentage || 0);
+      if (isExam) {
+        breakdown[subjectName].examScores.push(percentage);
+        breakdown[subjectName].examTotal += percentage;
+        breakdown[subjectName].examCount += 1;
+      } else if (isAssignment) {
+        breakdown[subjectName].assignmentScores.push(percentage);
+        breakdown[subjectName].assignmentTotal += percentage;
+        breakdown[subjectName].assignmentCount += 1;
+      }
+    });
+
+    // Calculate averages
+    Object.keys(breakdown).forEach(subject => {
+      const data = breakdown[subject];
+      data.examAverage = data.examCount > 0
+        ? (data.examTotal / data.examCount).toFixed(2)
+        : 0;
+      data.assignmentAverage = data.assignmentCount > 0
+        ? (data.assignmentTotal / data.assignmentCount).toFixed(2)
+        : 0;
+    });
+
+    return breakdown;
+  }
+
+  async getStudentPerformanceTrends(limit = 50) {
+    const { Student, Result, Exam, Assignment, Subject, User } = this.models;
+
+    try {
+      // Get results with dates for trend analysis
+      const results = await Result.findAll({
+        include: [
+          {
+            model: Exam,
+            as: 'exam',
+            required: false,
+            include: [
+              { model: Subject, as: 'subject', attributes: ['subjectName'] },
+              { model: Student, as: 'students', attributes: ['id', 'studentId'], required: false }
+            ]
+          },
+          {
+            model: Assignment,
+            as: 'assignment',
+            required: false,
+            include: [
+              { model: Subject, as: 'subject', attributes: ['subjectName'] },
+              { model: Student, as: 'students', attributes: ['id', 'studentId'], required: false }
+            ]
+          },
+          {
+            model: Student,
+            as: 'student',
+            include: [{ model: User, as: 'user', attributes: ['name'] }]
+          }
+        ],
+        order: [['createdAt', 'DESC']],
+        limit: limit * 10 // Get more results for trend analysis
+      });
+
+      // Group by student
+      const studentTrends = {};
+      results.forEach(r => {
+        const studentId = r.studentId;
+        if (!studentTrends[studentId]) {
+          studentTrends[studentId] = {
+            id: studentId,
+            name: r.student?.user?.name || 'Unknown',
+            studentIdCode: r.student?.studentId,
+            results: []
+          };
+        }
+        studentTrends[studentId].results.push({
+          percentage: parseFloat(r.percentage || 0),
+          grade: r.grade,
+          type: r.exam ? 'exam' : 'assignment',
+          subject: r.exam?.subject?.subjectName || r.assignment?.subject?.subjectName || 'Unknown',
+          date: r.createdAt,
+          title: r.exam?.title || r.assignment?.title || 'Unknown'
+        });
+      });
+
+      // Calculate trends for each student
+      return Object.values(studentTrends).slice(0, limit).map(s => {
+        const sortedResults = s.results.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        // Calculate overall trend
+        const firstHalf = sortedResults.slice(0, Math.ceil(sortedResults.length / 2));
+        const secondHalf = sortedResults.slice(Math.floor(sortedResults.length / 2));
+
+        const firstAvg = firstHalf.length > 0
+          ? firstHalf.reduce((acc, r) => acc + r.percentage, 0) / firstHalf.length
+          : 0;
+        const secondAvg = secondHalf.length > 0
+          ? secondHalf.reduce((acc, r) => acc + r.percentage, 0) / secondHalf.length
+          : 0;
+
+        // Separate exam vs assignment trends
+        const examResults = sortedResults.filter(r => r.type === 'exam');
+        const assignmentResults = sortedResults.filter(r => r.type === 'assignment');
+
+        const examFirstAvg = examResults.length > 1
+          ? examResults.slice(0, Math.ceil(examResults.length / 2))
+              .reduce((acc, r) => acc + r.percentage, 0) / Math.ceil(examResults.length / 2)
+          : 0;
+        const examSecondAvg = examResults.length > 1
+          ? examResults.slice(Math.floor(examResults.length / 2))
+              .reduce((acc, r) => acc + r.percentage, 0) / (examResults.length - Math.floor(examResults.length / 2))
+          : examResults[0]?.percentage || 0;
+
+        const assignmentFirstAvg = assignmentResults.length > 1
+          ? assignmentResults.slice(0, Math.ceil(assignmentResults.length / 2))
+              .reduce((acc, r) => acc + r.percentage, 0) / Math.ceil(assignmentResults.length / 2)
+          : 0;
+        const assignmentSecondAvg = assignmentResults.length > 1
+          ? assignmentResults.slice(Math.floor(assignmentResults.length / 2))
+              .reduce((acc, r) => acc + r.percentage, 0) / (assignmentResults.length - Math.floor(assignmentResults.length / 2))
+          : assignmentResults[0]?.percentage || 0;
+
+        // Trend direction
+        const overallTrend = secondAvg > firstAvg + 5 ? 'improving'
+          : secondAvg < firstAvg - 5 ? 'declining'
+          : 'stable';
+
+        return {
+          ...s,
+          overallTrend,
+          firstHalfAverage: firstAvg.toFixed(2),
+          secondHalfAverage: secondAvg.toFixed(2),
+          trendDifference: (secondAvg - firstAvg).toFixed(2),
+          examTrend: {
+            firstHalf: examFirstAvg.toFixed(2),
+            secondHalf: examSecondAvg.toFixed(2),
+            difference: (examSecondAvg - examFirstAvg).toFixed(2)
+          },
+          assignmentTrend: {
+            firstHalf: assignmentFirstAvg.toFixed(2),
+            secondHalf: assignmentSecondAvg.toFixed(2),
+            difference: (assignmentSecondAvg - assignmentFirstAvg).toFixed(2)
+          },
+          recentResults: sortedResults.slice(-5) // Last 5 results
+        };
+      });
+    } catch (error) {
+      console.error('Error fetching student performance trends:', error);
+      return [];
+    }
+  }
+
+  async getClassPerformanceTrends(classId) {
+    const { Class, Student, Result, Exam, Subject } = this.models;
+
+    try {
+      const classData = await Class.findByPk(classId, {
+        include: [{
+          model: Student,
+          as: 'students',
+          include: [{
+            model: Result,
+            as: 'results',
+            include: [
+              { model: Exam, as: 'exam', include: [{ model: Subject, as: 'subject' }] }
+            ]
+          }]
+        }]
+      });
+
+      if (!classData || !classData.students) return null;
+
+      // Calculate class-wide trends over time
+      const allResults = classData.students.flatMap(s =>
+        (s.results || []).map(r => ({
+          ...r.toJSON(),
+          studentName: s.user?.name || 'Unknown'
+        }))
+      );
+
+      // Group by date periods (if we had proper dates, we'd use them)
+      const sortedResults = allResults.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+      if (sortedResults.length < 4) {
+        return {
+          className: classData.name,
+          hasEnoughData: false,
+          message: 'Not enough assessment data to determine trends'
+        };
+      }
+
+      // Split into two time periods
+      const midPoint = Math.floor(sortedResults.length / 2);
+      const firstPeriod = sortedResults.slice(0, midPoint);
+      const secondPeriod = sortedResults.slice(midPoint);
+
+      const firstAvg = firstPeriod.reduce((acc, r) => acc + parseFloat(r.percentage || 0), 0) / firstPeriod.length;
+      const secondAvg = secondPeriod.reduce((acc, r) => acc + parseFloat(r.percentage || 0), 0) / secondPeriod.length;
+
+      // Subject-specific trends
+      const subjectTrends = {};
+      sortedResults.forEach(r => {
+        const subjectName = r.exam?.subject?.subjectName || 'Unknown';
+        if (!subjectTrends[subjectName]) {
+          subjectTrends[subjectName] = [];
+        }
+        subjectTrends[subjectName].push(parseFloat(r.percentage || 0));
+      });
+
+      const subjectAnalysis = Object.entries(subjectTrends).map(([subject, scores]) => {
+        if (scores.length < 2) return { subject, trend: 'insufficient_data' };
+        const mid = Math.floor(scores.length / 2);
+        const first = scores.slice(0, mid).reduce((a, b) => a + b, 0) / (mid || 1);
+        const second = scores.slice(mid).reduce((a, b) => a + b, 0) / (scores.length - mid || 1);
+        return {
+          subject,
+          firstPeriodAverage: first.toFixed(2),
+          secondPeriodAverage: second.toFixed(2),
+          trend: second > first + 3 ? 'improving' : second < first - 3 ? 'declining' : 'stable',
+          change: (second - first).toFixed(2)
+        };
+      });
+
+      return {
+        className: classData.name,
+        hasEnoughData: true,
+        overallTrend: secondAvg > firstAvg + 3 ? 'improving' : secondAvg < firstAvg - 3 ? 'declining' : 'stable',
+        firstPeriodAverage: firstAvg.toFixed(2),
+        secondPeriodAverage: secondAvg.toFixed(2),
+        change: (secondAvg - firstAvg).toFixed(2),
+        subjectTrends: subjectAnalysis.sort((a, b) => parseFloat(b.change) - parseFloat(a.change))
+      };
+    } catch (error) {
+      console.error('Error fetching class performance trends:', error);
+      return null;
+    }
+  }
+
   async getStudentByUserId(userId) {
     const { Student } = this.models;
     if (!userId) return null;
@@ -335,7 +897,9 @@ export class AcademicContextBuilder {
       return students.map(s => {
         const studentResults = resultsByStudent[s.id] || [];
         const subjectBreakdown = this.getSubjectBreakdown(studentResults);
-        
+        const examAssignmentBreakdown = this.getExamAssignmentBreakdown(studentResults);
+        const subjectExamAssignmentBreakdown = this.getSubjectExamAssignmentBreakdown(studentResults);
+
         return {
           id: s.id,
           name: s.user?.name || 'Unknown',
@@ -349,7 +913,9 @@ export class AcademicContextBuilder {
           grades: this.summarizeGrades(studentResults),
           weakSubjects: this.identifyWeakSubjects(studentResults),
           strongSubjects: this.identifyStrongSubjects(studentResults),
-          subjectBreakdown: subjectBreakdown
+          subjectBreakdown: subjectBreakdown,
+          examAssignmentBreakdown: examAssignmentBreakdown,
+          subjectExamAssignmentBreakdown: subjectExamAssignmentBreakdown
         };
       });
     } catch (error) {
@@ -629,13 +1195,40 @@ export class AcademicContextBuilder {
     };
 
     await safeLoad('students', () => this.getStudentsData(50), []);
+    await safeLoad('teachersSummary', () => this.getTeachersSummary(50), { total: 0, items: [] });
+    await safeLoad('parentsSummary', () => this.getParentsSummary(50), { total: 0, items: [] });
     await safeLoad('topPerformers', () => this.getTopPerformers(10), []);
     await safeLoad('studentsNeedingImprovement', () => this.getStudentsNeedingImprovement(50), []);
     await safeLoad('classStats', () => this.getClassStats(), []);
     await safeLoad('subjectPerformance', () => this.getSubjectPerformance(), []);
     await safeLoad('attendanceSummary', () => this.getAttendanceSummary(), null);
+    await safeLoad('classesWithCapacity', () => this.getClassesWithCapacity(), []);
+    await safeLoad('upcomingEvents', () => this.getUpcomingEvents(10), []);
+    await safeLoad('latestAnnouncements', () => this.getLatestAnnouncements(5), []);
+    await safeLoad('upcomingExams', () => this.getUpcomingExams(10), []);
+    await safeLoad('assignmentsDue', () => this.getAssignmentsDue(10), []);
+    await safeLoad('studentPerformanceTrends', () => this.getStudentPerformanceTrends(50), []);
 
     const normalizedQuery = String(query || '').toLowerCase();
+
+    const wantsTrends =
+      normalizedQuery.includes('trend') ||
+      normalizedQuery.includes('declining') ||
+      normalizedQuery.includes('improving') ||
+      normalizedQuery.includes('over time') ||
+      normalizedQuery.includes('last few') ||
+      normalizedQuery.includes('recent performance');
+
+    const wantsExamVsAssignment =
+      normalizedQuery.includes('exam') && normalizedQuery.includes('assignment') ||
+      normalizedQuery.includes('exam vs') ||
+      normalizedQuery.includes('strong exam') ||
+      normalizedQuery.includes('weak exam') ||
+      normalizedQuery.includes('assignment performance');
+
+    if (wantsTrends || wantsExamVsAssignment) {
+      await safeLoad('studentPerformanceTrends', () => this.getStudentPerformanceTrends(50), []);
+    }
 
     const wantsWholeSchool =
       normalizedQuery.includes('whole school') ||
@@ -710,12 +1303,14 @@ export class AcademicContextBuilder {
         const genderRatio = await this.getClassGenderRatio(foundClass.id);
         const attendance = await this.getClassAttendanceSummary(foundClass.id);
         const subjectPerformance = await this.getClassSubjectPerformance(foundClass.id);
+        const classTrends = await this.getClassPerformanceTrends(foundClass.id);
 
         context.specificClass = {
           ...foundClass.toJSON(),
           genderRatio,
           attendanceSummary: attendance,
-          subjectPerformance
+          subjectPerformance,
+          performanceTrends: classTrends
         };
       } catch (error) {
         console.error('Error loading specific class context:', error);

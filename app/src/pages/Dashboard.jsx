@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
@@ -7,7 +7,9 @@ import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
-import { Users, BookOpen, GraduationCap, MoreHorizontal, Bell } from 'lucide-react';
+import { Users, BookOpen, GraduationCap, MoreHorizontal } from 'lucide-react';
+import { studentsAPI, teachersAPI, parentsAPI, eventsAPI, announcementsAPI, dashboardAPI } from '../services/api';
+import { handleError } from '../utils/errorHandler';
 import AIChatbot from '../components/AIChatbot';
 
 const localizer = momentLocalizer(moment);
@@ -26,55 +28,105 @@ const Dashboard = () => {
     white: '#FFFFFF'
   };
 
-  const [stats] = useState({
-    totalStudents: 1218,
-    totalTeachers: 20,
-    totalParents: 1189,
-    maleStudents: 1234,
-    femaleStudents: 1134,
-    attendanceRate: 94.5
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    totalTeachers: 0,
+    totalParents: 0,
+    maleStudents: 0,
+    femaleStudents: 0,
+    attendanceRate: 0
   });
 
-  const [events] = useState([
-    { id: 1, title: 'Math Exam', start: new Date(2024, 1, 25, 9, 0), end: new Date(2024, 1, 25, 11, 0), type: 'exam' },
-    { id: 2, title: 'Science Fair', start: new Date(2024, 1, 28, 10, 0), end: new Date(2024, 1, 28, 15, 0), type: 'event' }
-  ]);
+  const [events, setEvents] = useState([]);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [announcements, setAnnouncements] = useState([]);
+  const [attendanceData, setAttendanceData] = useState([]);
 
   const genderData = [
     { name: 'Boys', value: stats.maleStudents, color: theme.bluePastel },
     { name: 'Girls', value: stats.femaleStudents, color: theme.pinkPastel }
   ];
 
-  const attendanceData = [
-    { day: 'Mon', boys: 75, girls: 60 },
-    { day: 'Tue', boys: 75, girls: 60 },
-    { day: 'Wed', boys: 75, girls: 60 },
-    { day: 'Thu', boys: 75, girls: 60 },
-    { day: 'Fri', boys: 75, girls: 60 },
-  ];
 
   const eventStyleGetter = (event) => ({
     style: { backgroundColor: theme.bluePastel, borderRadius: '8px', border: 'none', color: '#1A363E' }
   });
 
+  // load real data from backend
+  useEffect(() => {
+    const loadDashboard = async () => {
+      try {
+        const [stuRes, teaRes, parRes, evtRes, annRes] = await Promise.all([
+          studentsAPI.getAll({ limit: 100000 }),
+          teachersAPI.getAll({ limit: 100000 }),
+          parentsAPI.getAll({ limit: 100000 }),
+          eventsAPI.getAll({ limit: 1000 }),
+          announcementsAPI.getAll({ limit: 5 })
+        ]);
+
+        const students = stuRes.data || [];
+        const teachers = teaRes.data || [];
+        const parents = parRes.data || [];
+        const evts = evtRes.data || [];
+        const anns = annRes.data || [];
+
+        setStats({
+          totalStudents: students.length,
+          totalTeachers: teachers.length,
+          totalParents: parents.length,
+          maleStudents: students.filter(s => s.gender === 'male').length,
+          femaleStudents: students.filter(s => s.gender === 'female').length,
+          attendanceRate: 0 // could compute separately if desired
+        });
+
+        setEvents(evts.map(e => ({
+          ...e,
+          start: new Date(e.startDate || e.start),
+          end: new Date(e.endDate || e.end)
+        })));
+        setAnnouncements(anns);
+
+        // fetch attendance breakdown by day/gender
+        try {
+          const chartRes = await dashboardAPI.getAttendanceChart();
+          if (chartRes && chartRes.data) {
+            // convert data format to what recharts expects
+            setAttendanceData(chartRes.data.map(d => ({
+              day: d.day,
+              boys: d.boys,
+              girls: d.girls
+            })));
+          }
+        } catch (err) {
+          console.warn('attendance chart load failed', err);
+        }
+      } catch (error) {
+        handleError(error, 'Failed to load dashboard data');
+      }
+    };
+
+    loadDashboard();
+  }, []);
+
+
   return (
     <div className="min-h-screen p-6 space-y-6" style={{ backgroundColor: theme.background }}>
       
-      <div className="flex gap-6">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* Left Side: Stats and Charts */}
         <div className="flex-[2] space-y-6">
           
           {/* Top Stat Cards */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <StatCard title="Students" value={stats.totalStudents} color={theme.mint} icon={<Users size={20} />} />
             <StatCard title="Teachers" value={stats.totalTeachers} color={theme.mint} icon={<GraduationCap size={20} />} />
             <StatCard title="Parents" value={stats.totalParents} color={theme.mint} icon={<BookOpen size={20} />} />
           </div>
 
           {/* Charts Row */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Student Donut Chart */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm h-[400px]">
+            <div className="bg-white p-6 rounded-2xl shadow-sm h-[300px] md:h-[400px]">
               <h2 className="text-xl font-bold mb-4">Students</h2>
               <ResponsiveContainer width="100%" height="80%">
                 <PieChart>
@@ -87,17 +139,21 @@ const Dashboard = () => {
               <div className="flex justify-around mt-3 text-sm font-bold">
                 <div className="text-center">
                   <div className="flex items-center gap-2 justify-center"><div className="w-3 h-3 rounded-full bg-[#A2D2DF]"></div><span>{stats.maleStudents.toLocaleString()}</span></div>
-                  <p className="text-gray-400 text-xs">Boys (55%)</p>
+                  <p className="text-gray-400 text-xs">
+                    Boys ({stats.totalStudents ? ((stats.maleStudents / stats.totalStudents) * 100).toFixed(0) : 0}%)
+                  </p>
                 </div>
                 <div className="text-center">
                   <div className="flex items-center gap-2 justify-center"><div className="w-3 h-3 rounded-full bg-[#F080A0]"></div><span>{stats.femaleStudents.toLocaleString()}</span></div>
-                  <p className="text-gray-400 text-xs">Girls (45%)</p>
+                  <p className="text-gray-400 text-xs">
+                    Girls ({stats.totalStudents ? ((stats.femaleStudents / stats.totalStudents) * 100).toFixed(0) : 0}%)
+                  </p>
                 </div>
               </div>
             </div>
 
             {/* Attendance Bar Chart */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm h-[400px]">
+            <div className="bg-white p-6 rounded-2xl shadow-sm h-[300px] md:h-[400px]">
               <h2 className="text-xl font-bold mb-4">Attendance</h2>
               <ResponsiveContainer width="100%" height="80%">
                 <BarChart data={attendanceData}>
@@ -113,19 +169,40 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Notice Board */}
-          <div className="rounded-2xl p-6 h-[400px] shadow-sm overflow-hidden" style={{ backgroundColor: theme.pink }}>
+          {/* Notice Board - show upcoming events as table */}
+          <div className="rounded-2xl p-6 h-[300px] md:h-[400px] shadow-sm overflow-auto" style={{ backgroundColor: theme.pink }}>
             <h2 className="text-2xl font-bold text-gray-800 mb-4">Notice Board</h2>
-            <div className="space-y-4 opacity-60">
-               <p className="italic">Any general school-wide updates or important staff notices will appear here...</p>
-            </div>
+            {events && events.length > 0 ? (
+              <table className="min-w-full text-left text-sm">
+                <thead>
+                  <tr>
+                    <th className="pb-2">Title</th>
+                    <th className="pb-2">Description</th>
+                    <th className="pb-2">Start Date</th>
+                    <th className="pb-2">End Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {events.map((ev) => (
+                    <tr key={ev.id} className="border-t border-gray-200">
+                      <td className="py-1 pr-3 font-medium text-gray-800">{ev.title}</td>
+                      <td className="py-1 pr-3 text-gray-700">{ev.description || '-'}</td>
+                      <td className="py-1 pr-3 text-gray-700">{new Date(ev.start).toLocaleDateString()}</td>
+                      <td className="py-1 pr-3 text-gray-700">{new Date(ev.end).toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="text-gray-500 italic">No events to display on notice board.</p>
+            )}
           </div>
         </div>
 
         {/* Right Side: Calendar and Announcements */}
         <div className="flex-1 space-y-6">
           {/* Calendar Area */}
-          <div className="bg-[#BFDCE5] rounded-2xl p-4 h-[450px] shadow-sm flex flex-col">
+          <div className="bg-[#BFDCE5] rounded-2xl p-4 h-[350px] md:h-[450px] shadow-sm flex flex-col">
             <h2 className="text-center text-gray-600 font-medium mb-2">Calendar</h2>
             <div className="flex-1 overflow-hidden rounded-xl bg-white/40">
               <Calendar
@@ -134,22 +211,28 @@ const Dashboard = () => {
                 eventPropGetter={eventStyleGetter}
                 views={['month']}
                 toolbar={true}
+                date={currentDate}
+                onNavigate={(date) => setCurrentDate(date)}
               />
             </div>
           </div>
 
           {/* Announcements Area */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm min-h-[500px]">
+          <div className="bg-white rounded-2xl p-6 shadow-sm min-h-[300px] md:min-h-[400px]">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Announcements</h2>
             <div className="space-y-4">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="p-4 rounded-xl border border-yellow-100" style={{ backgroundColor: theme.yellow }}>
-                  <h3 className="font-bold text-gray-800">Grade-1 Test Paper</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    The test scheduled for 2nd March has been cancelled. A new date will be announced soon.
-                  </p>
-                </div>
-              ))}
+              {announcements && announcements.length > 0 ? (
+                announcements.map((ann) => (
+                  <div key={ann.id} className="p-4 rounded-xl border border-yellow-100" style={{ backgroundColor: theme.yellow }}>
+                    <h3 className="font-bold text-gray-800">{ann.title}</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {ann.description || ann.message || ''}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500">No announcements to display.</p>
+              )}
             </div>
           </div>
         </div>

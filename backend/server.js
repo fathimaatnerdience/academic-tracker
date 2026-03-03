@@ -24,6 +24,9 @@ import eventRoutes from './routes/eventRoutes.js';
 import announcementRoutes from './routes/announcementRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import searchRoutes from './routes/searchRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
+import ensureDbConnection from './middleware/dbConnection.js';
+import { errorHandler } from './middleware/error.js';
 
 // Load environment variables
 dotenv.config();
@@ -46,11 +49,15 @@ const PORT = process.env.PORT || 5000;
 // Security Middleware
 app.use(helmet());
 
+
+
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: 'Too many requests from this IP, please try again later.'
+  message: 'Too many requests from this IP, please try again later.',
+  skip: (req) => req.method === 'OPTIONS' || req.method === 'GET' // ignore preflight and safe reads
 });
 app.use('/api', limiter);
 
@@ -79,7 +86,8 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// API Routes - MUST be defined BEFORE the 404 handler
+// API Routes - ensure the DB connection is live before handling each request
+app.use(ensureDbConnection);
 app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/teachers', teacherRoutes);
@@ -95,25 +103,17 @@ app.use('/api/events', eventRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // 404 Handler - Must be AFTER all API routes
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'The requested page or resource was not found.'
-  });
+app.use((req, res, next) => {
+  const error = new Error(`The requested page or resource was not found - ${req.originalUrl}`);
+  error.statusCode = 404;
+  next(error);
 });
 
-// Global Error Handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  
-  res.status(err.statusCode || 500).json({
-    success: false,
-    message: err.message || 'Internal Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
-});
+// Import and use centralized error middleware
+app.use(errorHandler);
 
 // Database Connection and Server Start
 const startServer = async () => {
@@ -144,6 +144,18 @@ const startServer = async () => {
 };
 
 startServer();
+
+// periodic message to prevent idle disconnects and surface issues early
+setInterval(async () => {
+  try {
+    await sequelize.authenticate();
+    if (process.env.NODE_ENV === 'development') {
+      console.log(' Database successful');
+    }
+  } catch (err) {
+    console.error(' Database failed:', err.message);
+  }
+}, 30000); // ping every 30 seconds
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Promise Rejection:', reason);
