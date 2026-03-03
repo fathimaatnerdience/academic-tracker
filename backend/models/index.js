@@ -12,6 +12,7 @@ import Result from './Result.js';
 import Attendance from './Attendance.js';
 import Event from './Event.js';
 import Announcement from './Announcement.js';
+import PasswordResetToken from './PasswordResetToken.js';
 
 // ========================================
 // Define Associations
@@ -88,6 +89,9 @@ Event.belongsTo(Class, { foreignKey: 'classId', as: 'class' });
 Announcement.belongsTo(Class, { foreignKey: 'classId', as: 'class' });
 Announcement.belongsTo(User, { foreignKey: 'publishedBy', as: 'publisher' });
 
+// Password reset token association - link back to user
+PasswordResetToken.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 // ========================================
 // Export all models
 // ========================================
@@ -106,7 +110,8 @@ export {
   Result,
   Attendance,
   Event,
-  Announcement
+  Announcement,
+  PasswordResetToken
 };
 
 // Also export as default for easy importing
@@ -124,5 +129,6 @@ export default {
   Result,
   Attendance,
   Event,
-  Announcement
+  Announcement,
+  PasswordResetToken
 };

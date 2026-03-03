@@ -43,6 +43,11 @@ const Login = () => {
     }
   };
 
+  // navigate to forgot password page when user clicks the link
+  const handleForgotPassword = () => {
+    navigate('/forgot-password');
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-2 sm:p-4 md:p-6 lg:p-8" style={{ backgroundColor: '#DDDB59' }}>
       
@@ -148,12 +153,17 @@ const Login = () => {
                 </div>
               </div>
 
-              {/* Forgot Password 
+              {/* Forgot Password */}
               <div className="flex justify-end">
-                <button type="button" className="text-xs sm:text-sm font-medium" style={{ color: '#1976D2' }}>
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="text-xs sm:text-sm font-medium"
+                  style={{ color: '#1976D2' }}
+                >
                   Forgot Password?
                 </button>
-              </div>*/}
+              </div>
 
               {/* Sign In Button */}
               <button
