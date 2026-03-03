@@ -92,6 +92,9 @@ export const authAPI = {
   validateToken: () => api.get('/auth/validate'),
   updateProfile: (data) => api.put('/auth/updatedetails', data),
   updatePassword: (data) => api.put('/auth/updatepassword', data),
+  // send forgot password request (email only)
+  forgotPassword: (data) => api.post('/auth/forgotpassword', data),
+  resetPassword: (data) => api.post('/auth/resetpassword', data),
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
