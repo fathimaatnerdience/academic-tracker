@@ -229,6 +229,9 @@ Guidelines:
 14. When listing subjects, ALWAYS use the actual subject names from the Subject Breakdown, never say "undefined"
 15. IMPORTANT: If asked about a specific class or batch, use the SPECIFIC CLASS context (gender ratio, attendance summary, subject performance) when available
 16. CRITICAL: If the user asks about "whole school", "entire school", "all students", or "total number" of students/genders, use the OVERALL GENDER SUMMARY data which shows totals across the entire school, not class-specific data
+17. NEW - EXAM VS ASSIGNMENT ANALYSIS: Each student now has examAssignmentBreakdown showing separate averages for exams and assignments. Use this to identify students with strong exam but weak assignment performance (or vice versa).
+18. NEW - PERFORMANCE TRENDS: Student performance trends show first half vs second half averages. Use this to identify declining or improving students over time.
+19. NEW - SUBJECT-SPECIFIC EXAM/ASSIGNMENT: Each subject breakdown now shows separate exam and assignment averages per subject.
 
 Available Data Context:`;
 
@@ -247,7 +250,43 @@ Available Data Context:`;
         if (s.strongSubjects.length > 0) {
           prompt += `  Strong in: ${s.strongSubjects.join(', ')}\n`;
         }
+        // Add exam vs assignment breakdown if available
+        if (s.examAssignmentBreakdown) {
+          const bd = s.examAssignmentBreakdown;
+          if (bd.examCount > 0 || bd.assignmentCount > 0) {
+            prompt += `  Exam Avg: ${bd.examAverage}% (${bd.examCount} exams), Assignment Avg: ${bd.assignmentAverage}% (${bd.assignmentCount} assignments)\n`;
+          }
+        }
       });
+    }
+
+    if (context.studentPerformanceTrends && context.studentPerformanceTrends.length > 0 && (role === 'admin' || role === 'teacher')) {
+      prompt += `\n\n📈 STUDENT PERFORMANCE TRENDS:\n`;
+      prompt += `Format: Name - Overall Trend | Exam Trend Change | Assignment Trend Change\n`;
+      context.studentPerformanceTrends.slice(0, 15).forEach(t => {
+        const examChange = parseFloat(t.examTrend?.difference || 0);
+        const assignChange = parseFloat(t.assignmentTrend?.difference || 0);
+        prompt += `- ${t.name}: ${t.overallTrend.toUpperCase()} (Overall: ${t.firstHalfAverage}% → ${t.secondHalfAverage}%)`;
+        prompt += ` | Exams: ${examChange > 0 ? '+' : ''}${examChange}%`;
+        prompt += ` | Assignments: ${assignChange > 0 ? '+' : ''}${assignChange}%\n`;
+      });
+    }
+
+    if (context.teachersSummary && (role === 'admin' || role === 'teacher')) {
+      const t = context.teachersSummary;
+      prompt += `\n\n👩‍🏫 TEACHERS SUMMARY:\n`;
+      prompt += `- Total Teachers: ${t.total ?? 0}\n`;
+      if (Array.isArray(t.items) && t.items.length > 0) {
+        prompt += `- Teachers List (showing up to 15):\n`;
+        t.items.slice(0, 15).forEach(item => {
+          const teacherName = item?.name || 'Unknown';
+          const teacherEmail = item?.email ? ` (${item.email})` : '';
+          const qual = item?.qualification ? `, Qualification: ${item.qualification}` : '';
+          const spec = item?.specialization ? `, Specialization: ${item.specialization}` : '';
+          const exp = item?.experience != null ? `, Experience: ${item.experience} years` : '';
+          prompt += `  - ${teacherName}${teacherEmail}${qual}${spec}${exp}\n`;
+        });
+      }
     }
 
     if (context.topPerformers && context.topPerformers.length > 0) {
@@ -338,6 +377,23 @@ Available Data Context:`;
           prompt += `  - ${s.subject}: ${s.averageScore}% (${s.assessments} assessments)\n`;
         });
       }
+
+      if (c.performanceTrends) {
+        const pt = c.performanceTrends;
+        if (pt.hasEnoughData) {
+          prompt += `- Class Performance Trends:\n`;
+          prompt += `  - Overall Trend: ${pt.overallTrend.toUpperCase()} (${pt.firstPeriodAverage}% → ${pt.secondPeriodAverage}%, change: ${pt.change > 0 ? '+' : ''}${pt.change}%)\n`;
+          if (pt.subjectTrends && pt.subjectTrends.length > 0) {
+            prompt += `  - Subject Trends:\n`;
+            pt.subjectTrends.filter(st => st.trend !== 'insufficient_data').slice(0, 8).forEach(st => {
+              const changeSymbol = parseFloat(st.change) > 0 ? '+' : '';
+              prompt += `    - ${st.subject}: ${st.trend.toUpperCase()} (${st.firstPeriodAverage}% → ${st.secondPeriodAverage}%, ${changeSymbol}${st.change}%)\n`;
+            });
+          }
+        } else {
+          prompt += `- Class Performance Trends: ${pt.message || 'Insufficient data'}\n`;
+        }
+      }
     }
 
     if (context.specificStudent) {
@@ -366,6 +422,87 @@ Available Data Context:`;
           prompt += `  - ${subject}: ${data.average}% (${data.assessments} assessments)\n`;
         });
       }
+      // Add detailed subject exam/assignment breakdown if available
+      if (s.subjectExamAssignmentBreakdown && Object.keys(s.subjectExamAssignmentBreakdown).length > 0) {
+        prompt += `- Subject Exam vs Assignment Breakdown:\n`;
+        Object.entries(s.subjectExamAssignmentBreakdown).forEach(([subject, data]) => {
+          if (data.examCount > 0 || data.assignmentCount > 0) {
+            prompt += `  - ${subject}: Exams ${data.examAverage}% (${data.examCount}), Assignments ${data.assignmentAverage}% (${data.assignmentCount})\n`;
+          }
+        });
+      }
+    }
+
+    if (context.parentsSummary && (role === 'admin' || role === 'teacher')) {
+      const p = context.parentsSummary;
+      prompt += `\n\n👨‍👩‍👧 PARENTS SUMMARY:\n`;
+      prompt += `- Total Parents: ${p.total ?? 0}\n`;
+      if (Array.isArray(p.items) && p.items.length > 0) {
+        prompt += `- Parents List (showing up to 15):\n`;
+        p.items.slice(0, 15).forEach(item => {
+          const parentName = item?.name || 'Unknown';
+          const parentEmail = item?.email ? ` (${item.email})` : '';
+          const rel = item?.relationship ? `, ${item.relationship}` : '';
+          const occ = item?.occupation ? `, ${item.occupation}` : '';
+          prompt += `  - ${parentName}${parentEmail}${rel}${occ}\n`;
+        });
+      }
+    }
+
+    if (context.classesWithCapacity && (role === 'admin' || role === 'teacher')) {
+      const cls = context.classesWithCapacity;
+      if (cls.length > 0) {
+        prompt += `\n\n🏫 CLASSES & CAPACITY:\n`;
+        cls.slice(0, 15).forEach(c => {
+          prompt += `- ${c.name} (Grade ${c.gradeLevel}): ${c.enrolled}/${c.capacity} students`;
+          if (c.room) prompt += `, Room: ${c.room}`;
+          prompt += `, Available: ${c.availableSeats} seats\n`;
+        });
+      }
+    }
+
+    if (context.upcomingEvents && context.upcomingEvents.length > 0) {
+      prompt += `\n\n📅 UPCOMING EVENTS:\n`;
+      context.upcomingEvents.slice(0, 8).forEach(e => {
+        const date = new Date(e.startDate).toLocaleDateString();
+        const type = e.eventType ? `[${e.eventType}] ` : '';
+        prompt += `- ${type}${e.title} on ${date}`;
+        if (e.location) prompt += ` at ${e.location}`;
+        prompt += `\n`;
+      });
+    }
+
+    if (context.latestAnnouncements && context.latestAnnouncements.length > 0) {
+      prompt += `\n\n📢 LATEST ANNOUNCEMENTS:\n`;
+      context.latestAnnouncements.slice(0, 5).forEach(a => {
+        const priority = a.priority === 'high' ? ' (HIGH PRIORITY)' : '';
+        prompt += `- ${a.title}${priority}: ${a.description?.substring(0, 100) || ''}`;
+        if (a.targetAudience && a.targetAudience !== 'all') {
+          prompt += ` [For: ${a.targetAudience}]`;
+        }
+        prompt += `\n`;
+      });
+    }
+
+    if (context.upcomingExams && context.upcomingExams.length > 0) {
+      prompt += `\n\n📝 UPCOMING EXAMS:\n`;
+      context.upcomingExams.slice(0, 8).forEach(e => {
+        const date = new Date(e.examDate).toLocaleDateString();
+        prompt += `- ${e.subject} (${e.className}) on ${date} at ${e.startTime}`;
+        prompt += `, ${e.totalMarks} marks`;
+        if (e.teacher && e.teacher !== 'Unknown') prompt += `, Teacher: ${e.teacher}`;
+        prompt += `\n`;
+      });
+    }
+
+    if (context.assignmentsDue && context.assignmentsDue.length > 0) {
+      prompt += `\n\n📚 ASSIGNMENTS DUE:\n`;
+      context.assignmentsDue.slice(0, 8).forEach(a => {
+        const dueDate = new Date(a.dueDate).toLocaleDateString();
+        prompt += `- ${a.title} (${a.subject} - ${a.className}) due ${dueDate}`;
+        prompt += `, ${a.totalMarks} marks`;
+        prompt += `\n`;
+      });
     }
 
     prompt += `\n\nNow respond to the user's query based on the above context.`;
