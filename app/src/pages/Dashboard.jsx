@@ -38,6 +38,7 @@ const Dashboard = () => {
   });
 
   const [events, setEvents] = useState([]);
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [announcements, setAnnouncements] = useState([]);
   const [attendanceData, setAttendanceData] = useState([]);
 
@@ -210,6 +211,8 @@ const Dashboard = () => {
                 eventPropGetter={eventStyleGetter}
                 views={['month']}
                 toolbar={true}
+                date={currentDate}
+                onNavigate={(date) => setCurrentDate(date)}
               />
             </div>
           </div>
